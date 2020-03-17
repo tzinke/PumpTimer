@@ -8,8 +8,8 @@
 #define btn_rst 0x08 // GP3
 
 //Define outputs
-#define relays_off 0x01 // GP0
-#define relays_on 0x04 // GP2
+#define relays_on 0x01 // GP0
+#define relays_off 0x04 // GP2
 #define led_hours 0x10 // GP4
 #define led_rst 0x20 //  GP5
 
@@ -79,12 +79,6 @@ void enableInterrupts()
     INTCON |= 0x20; // Enable Timer 0 interrupt
 }
 
-void disableInterrupts()
-{
-    INTCON &= ~0x80; // Disable global interrupt
-    INTCON &= ~0x20; // Disable Timer 0 interrupt
-}
-
 void configOptions()
 {
     OPTION_REG &= 0xD0; // Set TMR0 clock source to internal instruction clock and apply prescaler to TMR0
@@ -93,13 +87,12 @@ void configOptions()
 
 void checkButtons()
 {
-    if(0 == (GPIO & btn_rst))
+    if(0 == (GPIO & btn_rst)) // Reset button pressed
     {
         _delay(50000); // 50ms debounce
         
         if(0 == (GPIO & btn_rst))
         {
-            disableInterrupts();
             runtime_hours = 0;
             t_8ms = 0;
             t_1s = 0;
@@ -107,34 +100,26 @@ void checkButtons()
             t_1h = 0;
         }
     }
-    else if(0 == (GPIO & btn_addhour))
+    
+    else if(0 == (GPIO & btn_addhour)) // Add/Check-hour button pressed
     {
         _delay(50000); // 50ms debounce
-        if(0 == (GPIO & btn_addhour))
+        
+        if(0 == (GPIO & btn_addhour)) // True press
         {
-            if(20 > runtime_hours)
-            {
-                runtime_hours++;
-                if(1 == runtime_hours)
-                {
-                    enableInterrupts();
-                }
-                half_runtime_hours = runtime_hours / 2;
-            }
             GPIO |= led_hours;
             _delay(100000);
             GPIO &= ~led_hours;
             _delay(350000); // To make it ~0.5 second since initial press
-            if(0 == (GPIO & btn_addhour))
+            
+            if(0 == (GPIO & btn_addhour)) // Long press
             {
                 // User held button for ~0.5 second. Undo the runtime increment and flash led_hours x runtime_hours
                 // Also, flash the reset led to visually distinguish the btn_addhour short- and long-press flashes
                 GPIO |= led_rst;
                 _delay(100000);
                 GPIO &= ~led_rst;
-
-                runtime_hours--;
-                half_runtime_hours = runtime_hours / 2;
+                
                 for(int i = 0; i < runtime_hours; i++)
                 {
                     GPIO |= led_hours;
@@ -142,14 +127,34 @@ void checkButtons()
                     GPIO &= ~led_hours;
                     _delay(400000);
                 }
+                
+                if(0 == runtime_hours) // Delay, otherwise the button will be read too quickly and probably add an hour
+                {
+                    _delay(200000);
+                }
             }
-            if(0 == (runtime_hours % 2))
+            
+            else if(20 > runtime_hours) // Not long press (short press) and user hasn't set run time to 20 hours
             {
-                runtime_even = 1;
-            }
-            else
-            {
-                runtime_even = 0;
+                runtime_hours++;
+                if(1 == runtime_hours)
+                {
+                    t_8ms = 0;
+                    t_1s = 0;
+                    t_1m = 0;
+                    t_1h = 0;
+                }
+                
+                half_runtime_hours = runtime_hours / 2;
+                if(0 == (runtime_hours % 2))
+                {
+                    runtime_even = 1;
+                }
+
+                else
+                {
+                    runtime_even = 0;
+                }
             }
         }
     }
@@ -159,14 +164,14 @@ void checkTime()
 {
     if(time_match)
     {
-        GPIO &= ~(relays_on | relays_off); // Turn both off to be safe
+        GPIO &= ~(relays_on | relays_off); // Redundant check
         _delay(1000);
         
         if(1 == pump_on)
         {
             // Turn pump off
             GPIO |= relays_off;
-            _delay(1000);
+            _delay(15000);
             GPIO &= ~relays_off;
             pump_on = 0;
         }
@@ -174,7 +179,7 @@ void checkTime()
         {
             // Turn pump on
             GPIO |= relays_on;
-            _delay(1000);
+            _delay(15000);
             GPIO &= ~relays_on;
             pump_on = 1;
         }
@@ -182,7 +187,7 @@ void checkTime()
         {
             // Error state. Turn pump off!
             GPIO |= relays_off;
-            _delay(1000);
+            _delay(15000);
             GPIO &= ~relays_off;
         }
     }
