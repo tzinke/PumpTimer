@@ -46,15 +46,16 @@ void __interrupt () isr()
             t_1m = 0;
             t_1h++;
             
-            // Toggle pump at 0 (on), runtime / 2 (off), 12 (on), 12 + (runtime/2) (off)
-            // Ex: runtime is 8 hours, started at 9am; 9am -> on, 1pm -> off, 9pm -> on, 1am -> off
+            // Toggle pump at 0 (on), runtime / 2 (off), 12 - (runtime/2) (on), 12 (off)
+            // Ex: runtime is 8 hours, started at 9am; 9am -> on, 1pm -> off, 5pm -> on, 9pm -> off
+            // This pattern aims to disperse run time evenly throughout the day and only during the day (running at night isn't super useful)
             if(1 == runtime_even)
             {
-                time_match = ((0 == t_1h) || (half_runtime_hours == t_1h) ||  (12 == t_1h) || ((12 + half_runtime_hours) == t_1h));
+                time_match = ((0 == t_1h) || (half_runtime_hours == t_1h) ||  ((12 - half_runtime_hours) == t_1h) || (12 == t_1h));
             }
             else // If runtime_hours is odd, add the truncated hour to the first run. Ex: 9am -> 1pm, 9pm -> 12am = 7 hours
             {
-                time_match = ((0 == t_1h) || ((half_runtime_hours + 1) == t_1h) ||  (12 == t_1h) || ((12 + half_runtime_hours) == t_1h));
+                time_match = ((0 == t_1h) || ((half_runtime_hours + 1) == t_1h) ||  ((12 - half_runtime_hours) == t_1h) || (12 + half_runtime_hours) == t_1h);
             }
         }
         if(24 == t_1h)
