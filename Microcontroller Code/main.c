@@ -23,6 +23,7 @@ static uint8_t runtime_hours = 0;
 static uint8_t half_runtime_hours = 0;
 static uint8_t pump_on = 0;
 static uint8_t runtime_even = 0;
+static uint8_t timer_override = 0;
 
 void __interrupt () isr()
 {
@@ -80,10 +81,33 @@ void enableInterrupts()
     INTCON |= 0x20; // Enable Timer 0 interrupt
 }
 
+void disableInterrupts()
+{
+    INTCON &= ~0x80; // Disable global interrupt
+    INTCON &= ~0x20; // Disable Timer 0 interrupt
+}
+
 void configOptions()
 {
     OPTION_REG &= 0xD0; // Set TMR0 clock source to internal instruction clock and apply prescaler to TMR0
     OPTION_REG |= 0x05; // Set prescaler bits to 101 (1:64, AKA 15,625Hz)
+}
+
+void startPump()
+{
+    // Turn pump on
+    GPIO |= relays_on;
+    _delay(15000);
+    GPIO &= ~relays_on;
+    pump_on = 1;
+}
+void stopPump()
+{
+    // Turn pump off
+    GPIO |= relays_off;
+    _delay(15000);
+    GPIO &= ~relays_off;
+    pump_on = 0;
 }
 
 void checkButtons()
@@ -94,11 +118,32 @@ void checkButtons()
         
         if(0 == (GPIO & btn_rst))
         {
-            runtime_hours = 0;
-            t_8ms = 0;
-            t_1s = 0;
-            t_1m = 0;
-            t_1h = 0;
+            _delay(450000); // Check long press
+            if(0 == (GPIO & btn_rst))
+            {
+                // Toggle timer override
+                if(0 != timer_override)
+                {
+                    timer_override = 0;
+                    stopPump();
+                }
+                else
+                {
+                    timer_override = 1;
+                    startPump();
+                }
+            }
+            else // Short press
+            {
+                stopPump();
+                disableInterrupts();
+                runtime_hours = 0;
+                timer_override = 0;
+                t_8ms = 0;
+                t_1s = 0;
+                t_1m = 0;
+                t_1h = 0;
+            }
         }
     }
     
@@ -163,33 +208,25 @@ void checkButtons()
 
 void checkTime()
 {
-    if(time_match)
+    if((time_match) && (0 == timer_override))
     {
-        GPIO &= ~(relays_on | relays_off); // Redundant check
-        _delay(1000);
-        
         if(1 == pump_on)
         {
             // Turn pump off
-            GPIO |= relays_off;
-            _delay(15000);
-            GPIO &= ~relays_off;
-            pump_on = 0;
+            stopPump();
+            stopPump(); // Redundant check
         }
         else if(0 == pump_on)
         {
             // Turn pump on
-            GPIO |= relays_on;
-            _delay(15000);
-            GPIO &= ~relays_on;
-            pump_on = 1;
+            startPump();
+            startPump(); // Redundant check
         }
         else
         {
             // Error state. Turn pump off!
-            GPIO |= relays_off;
-            _delay(15000);
-            GPIO &= ~relays_off;
+            stopPump();
+            stopPump(); // Redundant check
         }
     }
 }
