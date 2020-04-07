@@ -13,6 +13,8 @@
 #define led_hours 0x10 // GP4
 #define led_rst 0x20 //  GP5
 
+#define DAYLIGHT_HOURS 10
+
 volatile uint8_t t_8ms = 0;
 volatile uint8_t t_1s = 0;
 volatile uint8_t t_1m = 0;
@@ -47,16 +49,24 @@ void __interrupt () isr()
             t_1m = 0;
             t_1h++;
             
-            // Toggle pump at 0 (on), runtime / 2 (off), 12 - (runtime/2) (on), 12 (off)
-            // Ex: runtime is 8 hours, started at 9am; 9am -> on, 1pm -> off, 5pm -> on, 9pm -> off
-            // This pattern aims to disperse run time evenly throughout the day and only during the day (running at night isn't super useful)
-            if(1 == runtime_even)
+            if(DAYLIGHT_HOURS <= runtime_hours) // No on-off pattern useful, just run it for runtime_hours
             {
-                time_match = ((0 == t_1h) || (half_runtime_hours == t_1h) ||  ((12 - half_runtime_hours) == t_1h) || (12 == t_1h));
+                time_match = ((0 == t_1h) || (t_1h == runtime_hours));
             }
-            else // If runtime_hours is odd, add the truncated hour to the first run. Ex: 9am -> 1pm, 9pm -> 12am = 7 hours
+            else
             {
-                time_match = ((0 == t_1h) || ((half_runtime_hours + 1) == t_1h) ||  ((12 - half_runtime_hours) == t_1h) || (12 + half_runtime_hours) == t_1h);
+                // Toggle pump at 0 (on), runtime / 2 (off), DAYLIGHT_HOURS - (runtime/2) (on), DAYLIGHT_HOURS (off)
+                // Ex: runtime is 8 hours, DAYLIGHT_HOURS is 10 hours, started at 9am;
+                //     9am -> on, 1pm -> off, 3pm -> on, 7pm -> off
+                // This pattern aims to disperse pump operation throughout daylight time (running at night not super useful)
+                if(1 == runtime_even)
+                {
+                    time_match = ((0 == t_1h) || (half_runtime_hours == t_1h) ||  ((DAYLIGHT_HOURS - half_runtime_hours) == t_1h) || (DAYLIGHT_HOURS == t_1h));
+                }
+                else // If runtime_hours is odd, add the truncated hour to the first run. Ex: 9am -> 1pm, 9pm -> 12am = 7 hours
+                {
+                    time_match = ((0 == t_1h) || ((half_runtime_hours + 1) == t_1h) ||  ((DAYLIGHT_HOURS - half_runtime_hours) == t_1h) || (DAYLIGHT_HOURS + half_runtime_hours) == t_1h);
+                }
             }
         }
         if(24 == t_1h)
@@ -116,7 +126,7 @@ void checkButtons()
     {
         _delay(50000); // 50ms debounce
         
-        if(0 == (GPIO & btn_rst))
+        if(0 == (GPIO & btn_rst)) // True press
         {
             _delay(450000); // Check long press
             if(0 == (GPIO & btn_rst))
@@ -189,6 +199,7 @@ void checkButtons()
                     t_1s = 0;
                     t_1m = 0;
                     t_1h = 0;
+                    enableInterrupts();
                 }
                 
                 half_runtime_hours = runtime_hours / 2;
