@@ -63,9 +63,9 @@ void __interrupt () isr()
                 {
                     time_match = ((0 == t_1h) || (half_runtime_hours == t_1h) ||  ((DAYLIGHT_HOURS - half_runtime_hours) == t_1h) || (DAYLIGHT_HOURS == t_1h));
                 }
-                else // If runtime_hours is odd, add the truncated hour to the first run. Ex: 9am -> 1pm, 9pm -> 12am = 7 hours
+                else // If runtime_hours is odd, add the remainder hour to the first run. Ex: 9am -> 1pm, 4pm -> 7pm = 7 hours
                 {
-                    time_match = ((0 == t_1h) || ((half_runtime_hours + 1) == t_1h) ||  ((DAYLIGHT_HOURS - half_runtime_hours) == t_1h) || (DAYLIGHT_HOURS + half_runtime_hours) == t_1h);
+                    time_match = ((0 == t_1h) || ((half_runtime_hours + 1) == t_1h) ||  ((DAYLIGHT_HOURS - half_runtime_hours) == t_1h) || (DAYLIGHT_HOURS == t_1h));
                 }
             }
         }
