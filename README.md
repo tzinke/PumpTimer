@@ -4,7 +4,7 @@ A timer for my pool pump using a PIC12 microcontroller and a custom-made PCB
 To whomever lives in our house after us:
 I made this pump timer myself for fun/to save around $50 vs buying a commercial one. Clearly, it has no screen to tell you what's going on, so the following is meant to help you figure out how to use it.
 
-A word of warning to start: do not remove or replace the 9V battery if the pump is running. If the timer dies with the pump on, flip the breaker off, replace the battery, "override" the timer TWICE (see below), then flip the breaker back on.
+A word of warning to start: do not remove or replace the 9V battery if the pump is running. If the timer dies with the pump on, flip the breaker off, replace the battery, "override" the timer TWICE (see below), then flip the breaker back on. The pump should be off once you flip that breaker back on. If it's not, try again or contact me.
 
 Also, might go without saying, but everything is exposed here (including a 220-volt drop between two of the wires at the bottom of the timer) (**DO NOT TOUCH ANY OF THOSE WIRES WITHOUT TURNING THE BREAKER OFF**). Exercise caution.
 
