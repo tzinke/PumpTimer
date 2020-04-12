@@ -32,9 +32,9 @@ void __interrupt () isr()
     if(T0IF)
     {
         T0IF = 0; // Clear the overflow bit
-        TMR0 = 0x77;
+        TMR0 = 0x79;
         t_8ms++;
-        if(125 == t_8ms)
+        if(122 == t_8ms) // This and line 35 is as close as I can get to a perfect 1 second increment
         {
             t_1s++;
             t_8ms = 0;
@@ -73,6 +73,7 @@ void __interrupt () isr()
                     time_match = ((0 == t_1h) || ((half_runtime_hours + 1) == t_1h) ||  ((DAYLIGHT_HOURS - half_runtime_hours) == t_1h) || (DAYLIGHT_HOURS == t_1h));
                 }
             }
+            
         }
     }
 }
@@ -241,7 +242,7 @@ void checkButtons()
 
 void checkTime()
 {
-    if((time_match) && (0 == timer_override))
+    if((time_match) && (0 == timer_override))// && (0 < runtime_hours))
     {
         if(1 == pump_on)
         {
@@ -258,6 +259,8 @@ void checkTime()
             // Error state. Reset system (turns pump off)
             reset();
         }
+        
+        time_match = 0;
     }
 }
 
