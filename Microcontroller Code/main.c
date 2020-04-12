@@ -49,6 +49,11 @@ void __interrupt () isr()
             t_1m = 0;
             t_1h++;
             
+            if(24 == t_1h)
+            {
+                t_1h = 0;
+            }
+            
             if(DAYLIGHT_HOURS <= runtime_hours) // No on-off pattern useful, just run it for runtime_hours
             {
                 time_match = ((0 == t_1h) || (t_1h == runtime_hours));
@@ -69,10 +74,6 @@ void __interrupt () isr()
                 }
             }
         }
-        if(24 == t_1h)
-        {
-            t_1h = 0;
-        }
     }
 }
 
@@ -91,7 +92,7 @@ void enableInterrupts()
     INTCON |= 0x20; // Enable Timer 0 interrupt
 }
 
-void disableInterrupts()
+void disableInterrupts() // Currently unused
 {
     INTCON &= ~0x80; // Disable global interrupt
     INTCON &= ~0x20; // Disable Timer 0 interrupt
@@ -120,6 +121,78 @@ void stopPump()
     pump_on = 0;
 }
 
+void reset()
+{
+    stopPump();
+    runtime_hours = 0;
+    timer_override = 0;
+    t_8ms = 0;
+    t_1s = 0;
+    t_1m = 0;
+    t_1h = 0;
+}
+
+void override()
+{
+    // Toggle timer override
+    if(0 != timer_override)
+    {
+        timer_override = 0;
+        stopPump();
+    }
+    else
+    {
+        timer_override = 1;
+        startPump();
+    }
+}
+
+void displayHours()
+{ 
+    // Also, flash the reset led to visually distinguish the btn_addhour short- and long-press flashes
+    GPIO |= led_rst;
+    _delay(100000);
+    GPIO &= ~led_rst;
+
+    for(int i = 0; i < runtime_hours; i++)
+    {
+        GPIO |= led_hours;
+        _delay(100000);
+        GPIO &= ~led_hours;
+        _delay(400000);
+    }
+
+    if(0 == runtime_hours) // Delay, otherwise the button will be read too quickly and probably add an hour
+    {
+        _delay(200000);
+    }
+}
+
+void incrementRunTime()
+{
+    runtime_hours++;
+    if(1 == runtime_hours)
+    {
+        t_8ms = 0;
+        t_1s = 0;
+        t_1m = 0;
+        t_1h = 0;
+        startPump();
+        enableInterrupts();
+    }
+
+    half_runtime_hours = runtime_hours / 2;
+    if(0 == (runtime_hours % 2))
+    {
+        runtime_even = 1;
+    }
+
+    else
+    {
+        runtime_even = 0;
+    }
+}
+
 void checkButtons()
 {
     if(0 == (GPIO & btn_rst)) // Reset button pressed
@@ -131,28 +204,12 @@ void checkButtons()
             _delay(450000); // Check long press
             if(0 == (GPIO & btn_rst))
             {
-                // Toggle timer override
-                if(0 != timer_override)
-                {
-                    timer_override = 0;
-                    stopPump();
-                }
-                else
-                {
-                    timer_override = 1;
-                    startPump();
-                }
+                override();
+                _delay(500000); // Give time for user to stop pressing button before re-entering this loop
             }
             else // Short press
             {
-                stopPump();
-                disableInterrupts();
-                runtime_hours = 0;
-                timer_override = 0;
-                t_8ms = 0;
-                t_1s = 0;
-                t_1m = 0;
-                t_1h = 0;
+                reset();
             }
         }
     }
@@ -171,47 +228,12 @@ void checkButtons()
             if(0 == (GPIO & btn_addhour)) // Long press
             {
                 // User held button for ~0.5 second. Undo the runtime increment and flash led_hours x runtime_hours
-                // Also, flash the reset led to visually distinguish the btn_addhour short- and long-press flashes
-                GPIO |= led_rst;
-                _delay(100000);
-                GPIO &= ~led_rst;
-                
-                for(int i = 0; i < runtime_hours; i++)
-                {
-                    GPIO |= led_hours;
-                    _delay(100000);
-                    GPIO &= ~led_hours;
-                    _delay(400000);
-                }
-                
-                if(0 == runtime_hours) // Delay, otherwise the button will be read too quickly and probably add an hour
-                {
-                    _delay(200000);
-                }
+                displayHours();
             }
             
             else if(20 > runtime_hours) // Not long press (short press) and user hasn't set run time to 20 hours
             {
-                runtime_hours++;
-                if(1 == runtime_hours)
-                {
-                    t_8ms = 0;
-                    t_1s = 0;
-                    t_1m = 0;
-                    t_1h = 0;
-                    enableInterrupts();
-                }
-                
-                half_runtime_hours = runtime_hours / 2;
-                if(0 == (runtime_hours % 2))
-                {
-                    runtime_even = 1;
-                }
-
-                else
-                {
-                    runtime_even = 0;
-                }
+                incrementRunTime();
             }
         }
     }
@@ -225,19 +247,16 @@ void checkTime()
         {
             // Turn pump off
             stopPump();
-            stopPump(); // Redundant check
         }
         else if(0 == pump_on)
         {
             // Turn pump on
             startPump();
-            startPump(); // Redundant check
         }
         else
         {
-            // Error state. Turn pump off!
-            stopPump();
-            stopPump(); // Redundant check
+            // Error state. Reset system (turns pump off)
+            reset();
         }
     }
 }
@@ -247,6 +266,8 @@ void main(void)
     configGPIO();
     configOptions();
     enableInterrupts();
+    
+    reset();
     
     while(1) 
     {
