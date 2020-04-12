@@ -1,4 +1,4 @@
-# Pool Pump Timer Explanation
+# Pool Pump Timer Instructions
 A timer for my pool pump using a PIC12 microcontroller and a custom-made PCB
 
 To whomever lives in our house after us:
