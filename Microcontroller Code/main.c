@@ -242,7 +242,7 @@ void checkButtons()
 
 void checkTime()
 {
-    if((time_match) && (0 == timer_override))// && (0 < runtime_hours))
+    if((time_match) && (0 == timer_override) && (0 < runtime_hours))
     {
         if(1 == pump_on)
         {
