@@ -13,10 +13,8 @@
 #define led_hours 0x10 // GP4
 #define led_rst 0x20 //  GP5
 
-#define DAYLIGHT_HOURS 10
-
 volatile uint8_t t_8ms = 0;
-volatile uint8_t t_1s = 0;
+volatile int8_t t_1s = 0; // This is signed for correction factor
 volatile uint8_t t_1m = 0;
 volatile uint8_t t_1h = 0;
 volatile uint8_t time_match = 0;
@@ -24,7 +22,6 @@ volatile uint8_t time_match = 0;
 static uint8_t runtime_hours = 0;
 static uint8_t half_runtime_hours = 0;
 static uint8_t pump_on = 0;
-static uint8_t runtime_even = 0;
 static uint8_t timer_override = 0;
 
 void __interrupt () isr()
@@ -47,33 +44,16 @@ void __interrupt () isr()
         if(60 == t_1m)
         {
             t_1m = 0;
+            t_1s = -3; // Correction for ~3.4s drift per hour
             t_1h++;
             
             if(24 == t_1h)
             {
+                t_1s = -11; // Correction for the ~0.4s drift left from line 50
                 t_1h = 0;
             }
-            
-            if(DAYLIGHT_HOURS <= runtime_hours) // No on-off pattern useful, just run it for runtime_hours
-            {
-                time_match = ((0 == t_1h) || (t_1h == runtime_hours));
-            }
-            else
-            {
-                // Toggle pump at 0 (on), runtime / 2 (off), DAYLIGHT_HOURS - (runtime/2) (on), DAYLIGHT_HOURS (off)
-                // Ex: runtime is 8 hours, DAYLIGHT_HOURS is 10 hours, started at 9am;
-                //     9am -> on, 1pm -> off, 3pm -> on, 7pm -> off
-                // This pattern aims to disperse pump operation throughout daylight time (running at night not super useful)
-                if(1 == runtime_even)
-                {
-                    time_match = ((0 == t_1h) || (half_runtime_hours == t_1h) ||  ((DAYLIGHT_HOURS - half_runtime_hours) == t_1h) || (DAYLIGHT_HOURS == t_1h));
-                }
-                else // If runtime_hours is odd, add the remainder hour to the first run. Ex: 9am -> 1pm, 4pm -> 7pm = 7 hours
-                {
-                    time_match = ((0 == t_1h) || ((half_runtime_hours + 1) == t_1h) ||  ((DAYLIGHT_HOURS - half_runtime_hours) == t_1h) || (DAYLIGHT_HOURS == t_1h));
-                }
-            }
-            
+
+            time_match = ((0 == t_1h) || (t_1h == runtime_hours));            
         }
     }
 }
@@ -124,9 +104,12 @@ void stopPump()
 
 void reset()
 {
-    stopPump();
+    if(0 == timer_override)
+    {
+        stopPump();
+    }
+    
     runtime_hours = 0;
-    timer_override = 0;
     t_8ms = 0;
     t_1s = 0;
     t_1m = 0;
@@ -163,7 +146,7 @@ void displayHours()
         _delay(400000);
     }
 
-    if(0 == runtime_hours) // Delay, otherwise the button will be read too quickly and probably add an hour
+    if((0 == runtime_hours) || (1 == runtime_hours)) // Delay, otherwise the button will be read too quickly and probably add an hour
     {
         _delay(200000);
     }
@@ -179,19 +162,9 @@ void incrementRunTime()
         t_1m = 0;
         t_1h = 0;
         startPump();
-        enableInterrupts();
     }
 
     half_runtime_hours = runtime_hours / 2;
-    if(0 == (runtime_hours % 2))
-    {
-        runtime_even = 1;
-    }
-
-    else
-    {
-        runtime_even = 0;
-    }
 }
 
 void checkButtons()
