@@ -22,6 +22,7 @@ volatile uint8_t time_match = 0;
 static uint8_t runtime_hours = 0;
 static uint8_t half_runtime_hours = 0;
 static uint8_t pump_on = 0;
+static uint8_t timed_pump_state = 0;
 static uint8_t timer_override = 0;
 
 void __interrupt () isr()
@@ -44,12 +45,12 @@ void __interrupt () isr()
         if(60 == t_1m)
         {
             t_1m = 0;
-            t_1s = -3; // Correction for ~3.4s drift per hour
+            t_1s = -1; // Correction for ~-1.4s drift per hour
             t_1h++;
             
             if(24 == t_1h)
             {
-                t_1s = -11; // Correction for the ~0.4s drift left from line 50
+                t_1s = -10; // Correction for the ~0.4s drift left from line 50
                 t_1h = 0;
             }
 
@@ -119,15 +120,34 @@ void reset()
 void override()
 {
     // Toggle timer override
-    if(0 != timer_override)
+    if(0 != timer_override) // Timer is currently overridden
     {
+        // Turn override off. Put pump in correct state.
         timer_override = 0;
-        stopPump();
+        
+        if(0 != timed_pump_state) // Pump should be on
+        {
+            startPump();
+        }
+        else // Pump should be off
+        {
+            stopPump();
+        }
     }
-    else
+    else // Timer is currently NOT overridden
     {
+        // Turn override on. Put pump in the opposite state.
         timer_override = 1;
-        startPump();
+        timed_pump_state = pump_on; // Save the pump state @ moment of override
+        
+        if(0 != timed_pump_state) // Pump should be on
+        {
+            stopPump();
+        }
+        else // Pump should be off
+        {
+            startPump();
+        }
     }
 }
 
@@ -161,7 +181,10 @@ void incrementRunTime()
         t_1s = 0;
         t_1m = 0;
         t_1h = 0;
-        startPump();
+        if(0 == timer_override)
+        {
+            startPump();
+        }
     }
 
     half_runtime_hours = runtime_hours / 2;
@@ -215,25 +238,33 @@ void checkButtons()
 
 void checkTime()
 {
-    if((time_match) && (0 == timer_override) && (0 < runtime_hours))
+    if((time_match) && (0 < runtime_hours))
     {
-        if(1 == pump_on)
+        if(0 == timer_override) // Timer not overridden. Execute normal instructions.
         {
-            // Turn pump off
-            stopPump();
+            if(1 == pump_on)
+            {
+                // Turn pump off
+                stopPump();
+            }
+            else if(0 == pump_on)
+            {
+                // Turn pump on
+                startPump();
+            }
+            else
+            {
+                // Error state. Reset system (turns pump off)
+                reset();
+            }
+
+            time_match = 0;
         }
-        else if(0 == pump_on)
+        else // Timer is overridden. Store the correct pump state, but don't change the actual pump state.
         {
-            // Turn pump on
-            startPump();
+            // When the timer is de-overridden, this will put the pump in the correct state
+            timed_pump_state ^= 1;
         }
-        else
-        {
-            // Error state. Reset system (turns pump off)
-            reset();
-        }
-        
-        time_match = 0;
     }
 }
 
