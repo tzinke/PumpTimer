@@ -45,12 +45,11 @@ void __interrupt () isr()
         if(60 == t_1m)
         {
             t_1m = 0;
-            t_1s = -1; // Correction for ~-1.4s drift per hour
+            t_1s = 1; // Correction for ~1s drift per hour
             t_1h++;
             
             if(24 == t_1h)
             {
-                t_1s = -10; // Correction for the ~0.4s drift left from line 50
                 t_1h = 0;
             }
 
@@ -103,6 +102,7 @@ void stopPump()
     pump_on = 0;
 }
 
+// Resets the timer variables (excluding override)
 void reset()
 {
     if(0 == timer_override)
@@ -111,8 +111,9 @@ void reset()
     }
     
     runtime_hours = 0;
+    timed_pump_state = 0;
     t_8ms = 0;
-    t_1s = 0;
+    t_1s = 1;
     t_1m = 0;
     t_1h = 0;
 }
@@ -178,7 +179,7 @@ void incrementRunTime()
     if(1 == runtime_hours)
     {
         t_8ms = 0;
-        t_1s = 0;
+        t_1s = 1;
         t_1m = 0;
         t_1h = 0;
         if(0 == timer_override)
@@ -282,13 +283,21 @@ void main(void)
         checkButtons();
         checkTime();
         
-        if((0 == (t_1s % 5)) && (0 == runtime_hours))
+        if(0 == (t_1s % 5))
         {
-            GPIO |= led_rst;
+            if(0 != timer_override) // Flash both lights to indicate timer is overridden
+            {
+                GPIO ^= (led_rst | led_hours);
+            }
+            else if(0 == runtime_hours) // Flash red LED to indicate timer is not running
+            {
+                GPIO ^= led_rst;
+            }
         }
         else
         {
             GPIO &= ~led_rst;
+            GPIO &= ~led_hours;
         }
     }
 }
