@@ -12,8 +12,8 @@ The timer has two buttons; the top button subtracts an hour from the daily run-t
 ![Button to reduce pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)](/images/rst_override.jpg)
 
 
-**Button to increase pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)**
-![Button to increase pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)](/images/add_check.jpg)
+**Button to increase pump run-time by 1 hour (press) or override the timer to turn the pump on (hold)**
+![Button to increase pump run-time by 1 hour (press) or override the timer to turn the pump on (hold)](/images/add_check.jpg)
 
 
 Each time you change the daily run-time by pressing one of the buttons, the LEDs will light up in a sequence to tell you what the current run-time setting is. The green LED will briefly flash, then the red LED will briefly flash, then the green LED will flash once per hour of the run-time setting. For example, if the timer is set to run 5 hours per day, and you press the top button, the LEDs will flash: green (1x), red (1x), then green (4x) to indicate that you have decreased the run-time from 5 hours to 4 hours per day.
