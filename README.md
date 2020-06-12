@@ -1,8 +1,7 @@
 # Pool Pump Timer Instructions
-A timer for my pool pump using a PIC12 microcontroller and a custom-made PCB
+A timer for my pool pump using a PIC12 microcontroller and a custom-made PCB. I made this pump timer myself for fun and to save some money vs buying a commercial one. 
 
-To whomever lives in our house after us:
-I made this pump timer myself for fun and to save some money vs buying a commercial one. These are the instructions for use.
+These are the instructions for use for whoever lives in our house after us.
 
 Also, might go without saying, but everything is exposed here (including a 220-volt drop between two of the wires at the bottom of the timer). **DO NOT TOUCH ANY OF THOSE WIRES WITHOUT TURNING THE BREAKER OFF**.
 
@@ -10,7 +9,11 @@ The timer has two buttons; the top button subtracts an hour from the daily run-t
 
 ![Button to reduce pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)](/images/rst_override.jpg)
 
+**Button to reduce pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)**
+
 ![Button to increase pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)](/images/add_check.jpg)
+
+**Button to increase pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)**
 
 Each time you change the daily run-time by pressing one of the buttons, the LEDs will light up in a sequence to tell you what the current run-time setting is. The green LED will briefly flash, then the red LED will briefly flash, then the green LED will flash once per hour of the run-time setting. For example, if the timer is set to run 5 hours per day, and you press the top button, the LEDs will flash: green (1x), red (1x), then green (4x) to indicate that you have decreased the run-time from 5 hours to 4 hours per day.
 
