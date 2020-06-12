@@ -2,20 +2,18 @@
 A timer for my pool pump using a PIC12 microcontroller and a custom-made PCB
 
 To whomever lives in our house after us:
-I made this pump timer myself for fun and to save some money vs buying a commercial one. Clearly, it has no screen to tell you what's going on, so the following is meant to help you figure out how to use it.
+I made this pump timer myself for fun and to save some money vs buying a commercial one. These are the instructions for use.
 
-Also, might go without saying, but everything is exposed here (including a 220-volt drop between two of the wires at the bottom of the timer) (**DO NOT TOUCH ANY OF THOSE WIRES WITHOUT TURNING THE BREAKER OFF**). Exercise caution.
+Also, might go without saying, but everything is exposed here (including a 220-volt drop between two of the wires at the bottom of the timer). **DO NOT TOUCH ANY OF THOSE WIRES WITHOUT TURNING THE BREAKER OFF**.
 
-The timer has two buttons; a reset/override button, and a button that increases the pump run-time by an hour/checks the current run-time setting.
+The timer has two buttons; the top button subtracts an hour from the daily run-time if pressed and overrides the timer so the pump is OFF if held, and the bottom button adds an hour to the daily run-time if pressed and overrides the timer so the pump is ON if held.
 
-The reset/override button, circled in the picture below, will reset the timer if pressed and will override the timer if held. Overriding the timer causes the pump to turn on if it is currently off and turn off if it is currently on. Turning the pump on in this way will cause it to be on until you override it again. Resetting the timer will cause the pump run-time to be 0 hours (AKA, it will not turn on until you add hours to the run-time via the other button). Once the device is reset, and until you add an hour to the run-time, the red LED will flash every 5 seconds to indicate that the pump will not turn on via the timer.
+![Button to reduce pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)](/images/rst_override.jpg)
 
-![Button to reset system (press) or override timer (hold)](/images/rst_override.jpg)
+![Button to increase pump run-time by 1 hour (press) or override the timer to turn the pump off (hold)](/images/add_check.jpg)
 
-The "add/check hours" button, circled in the picture below, will increase the pump run-time by an hour if pressed. In winter, typically the pump only needs to be on about 4 hours per day, but this should increase to at least 8 hours in the summer. So, at the beginning of winter, to change from 8- to 4-hour run-time, you should press the reset/override button to reset the system, then press the "add/check hours" button four times. The green LED will briefly flash each time you press the "add/check hours" button.
+Each time you change the daily run-time by pressing one of the buttons, the LEDs will light up in a sequence to tell you what the current run-time setting is. The green LED will briefly flash, then the red LED will briefly flash, then the green LED will flash once per hour of the run-time setting. For example, if the timer is set to run 5 hours per day, and you press the top button, the LEDs will flash: green (1x), red (1x), then green (4x) to indicate that you have decreased the run-time from 5 hours to 4 hours per day.
 
-![Button to increase pump run-time by 1 hour (press) or display current pump run-time setting (hold)](/images/add_check.jpg)
+Whatever time you increase the run-time setting from 0 to 1 is the time of day that the pump will turn on each day going forward. Ex: the pump timer is currently set to 0 hours. At 9:15am, you press the bottom button to increase the setting to 1 hour/day. The pump will immediately be switched on, and will be switched on at 9:15am every day after that.
 
-Holding the "add/check hours" button will cause the red LED to briefly flash, followed by the green LED flashing once per hour of the current run-time setting. For example, if you have set the timer to run for four hours, holding the "add/check hours" button will cause the following LED sequence: green LED flash (1x), red LED flash (1x), green LED flash (4x). This is just in case you forget the current setting or are unsure you added the right amount of hours.
-
-Please note that double-pressing either of the buttons within about 1/2 second might be read as a hold. Pressing the "add/check hours" button twice in rapid succession might cause the device to show you the current hour setting, and neither of those presses will have added an hour (thus, you're two hours less than what you want).
+To change the time of day it switches on, decrease the run-time setting to 0, wait until the desired time of day, then increment to the desired duration.
