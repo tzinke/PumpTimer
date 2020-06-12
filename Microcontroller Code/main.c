@@ -5,13 +5,13 @@
 
 // Define inputs
 #define btn_addhour 0x02 // GP1
-#define btn_rst 0x08 // GP3
+#define btn_subtracthour 0x08 // GP3
 
 //Define outputs
 #define relays_on 0x01 // GP0
 #define relays_off 0x04 // GP2
-#define led_hours 0x10 // GP4
-#define led_rst 0x20 //  GP5
+#define led_green 0x10 // GP4
+#define led_red 0x20 //  GP5
 
 volatile uint8_t t_8ms = 0;
 volatile int8_t t_1s = 0; // This is signed for correction factor
@@ -22,8 +22,9 @@ volatile uint8_t time_match = 0;
 static uint8_t runtime_hours = 0;
 static uint8_t half_runtime_hours = 0;
 static uint8_t pump_on = 0;
-static uint8_t timed_pump_state = 0;
-static uint8_t timer_override = 0;
+static uint8_t timed_pump_state = 0; // Store the pump state according to the timer for proper de-overrides
+static uint8_t timer_override_ON = 0; // Bool storing if the timer is overridden to pump on
+static uint8_t timer_override_OFF = 0; // Bool storing if the timer is overridden to pump off
 
 void __interrupt () isr()
 {
@@ -63,7 +64,7 @@ void configGPIO()
     GPIO &= 0xC0;   // Set all pins low for good measure
     CMCON |= 0x07;   // Disconnect the comparator (datasheet pg 30)
     TRISIO &= 0xC8;     // Set all pins to output
-    TRISIO |= (btn_rst | btn_addhour);     // Set buttons to input
+    TRISIO |= (btn_subtracthour | btn_addhour);     // Set buttons to input
     ANSEL=0x00;     // All Analog selections pins are assigned as digital I/O
 }
 
@@ -105,11 +106,7 @@ void stopPump()
 // Resets the timer variables (excluding override)
 void reset()
 {
-    if(0 == timer_override)
-    {
-        stopPump();
-    }
-    
+    stopPump();    
     runtime_hours = 0;
     timed_pump_state = 0;
     t_8ms = 0;
@@ -118,52 +115,66 @@ void reset()
     t_1h = 0;
 }
 
-void override()
+void overrideToOff()
 {
-    // Toggle timer override
-    if(0 != timer_override) // Timer is currently overridden
+    if(0 == timer_override_OFF)
     {
-        // Turn override off. Put pump in correct state.
-        timer_override = 0;
-        
-        if(0 != timed_pump_state) // Pump should be on
-        {
-            startPump();
-        }
-        else // Pump should be off
-        {
-            stopPump();
-        }
+        timer_override_OFF = 1;
+        timer_override_ON = 0;
+        stopPump();
     }
-    else // Timer is currently NOT overridden
+    else
     {
-        // Turn override on. Put pump in the opposite state.
-        timer_override = 1;
-        timed_pump_state = pump_on; // Save the pump state @ moment of override
+        timer_override_OFF = 0;
         
-        if(0 != timed_pump_state) // Pump should be on
-        {
-            stopPump();
-        }
-        else // Pump should be off
+        if(1 == timed_pump_state)
         {
             startPump();
         }
     }
+    
+    // Let user know that override was performed
+    GPIO |= led_red | led_green;
+    _delay(1000000);
+    GPIO &= ~(led_red | led_green);
+}
+
+void overrideToOn()
+{
+    if(0 == timer_override_ON)
+    {
+        timer_override_ON = 1;
+        timer_override_OFF = 0;
+        startPump();
+    }
+    else
+    {
+        timer_override_ON = 0;
+        
+        if(0 == timed_pump_state)
+        {
+            stopPump();
+        }
+    }
+    
+    // Let user know that override was performed
+    GPIO |= led_red | led_green;
+    _delay(1000000);
+    GPIO &= ~(led_red | led_green);
 }
 
 void displayHours()
 { 
     // Also, flash the reset led to visually distinguish the btn_addhour short- and long-press flashes
-    GPIO |= led_rst;
+    GPIO |= led_red;
     _delay(100000);
-    GPIO &= ~led_rst;
+    GPIO &= ~led_red;
 
     for(int i = 0; i < runtime_hours; i++)
     {
-        GPIO |= led_hours;
+        GPIO |= led_green;
         _delay(100000);
-        GPIO &= ~led_hours;
+        GPIO &= ~led_green;
         _delay(400000);
     }
 
@@ -182,9 +193,25 @@ void incrementRunTime()
         t_1s = 1;
         t_1m = 0;
         t_1h = 0;
-        if(0 == timer_override)
+        if(0 == timer_override_OFF)
         {
             startPump();
+            timed_pump_state = 1;
+        }
+    }
+
+    half_runtime_hours = runtime_hours / 2;
+}
+
+void decrementRunTime()
+{
+    runtime_hours--;
+    if(0 == runtime_hours)
+    {
+        if(0 == timer_override_ON)
+        {
+            stopPump();
+            timed_pump_state = 0;
         }
     }
 
@@ -193,55 +220,56 @@ void incrementRunTime()
 
 void checkButtons()
 {
-    if(0 == (GPIO & btn_rst)) // Reset button pressed
+    if(0 == (GPIO & btn_subtracthour)) // Reset button pressed
     {
         _delay(50000); // 50ms debounce
         
-        if(0 == (GPIO & btn_rst)) // True press
+        if(0 == (GPIO & btn_subtracthour)) // True press
         {
-            _delay(450000); // Check long press
-            if(0 == (GPIO & btn_rst))
+            _delay(250000); // Check long press
+            if(0 == (GPIO & btn_subtracthour))
             {
-                override();
+                overrideToOff();
                 _delay(500000); // Give time for user to stop pressing button before re-entering this loop
             }
             else // Short press
             {
-                reset();
+                decrementRunTime();
+                displayHours();
             }
         }
     }
-    
-    else if(0 == (GPIO & btn_addhour)) // Add/Check-hour button pressed
+   
+    else if(0 == (GPIO & btn_addhour)) // Reset button pressed
     {
         _delay(50000); // 50ms debounce
         
         if(0 == (GPIO & btn_addhour)) // True press
         {
-            GPIO |= led_hours;
-            _delay(100000);
-            GPIO &= ~led_hours;
-            _delay(350000); // To make it ~0.5 second since initial press
-            
-            if(0 == (GPIO & btn_addhour)) // Long press
+            _delay(250000); // Check long press
+            if(0 == (GPIO & btn_addhour))
             {
-                // User held button for ~0.5 second. Undo the runtime increment and flash led_hours x runtime_hours
+                overrideToOn();
+                _delay(500000); // Give time for user to stop pressing button before re-entering this loop
+            }
+            else // Short press
+            {
+                if(24 > runtime_hours)
+                {
+                    incrementRunTime();
+                }
+                
                 displayHours();
             }
-            
-            else if(20 > runtime_hours) // Not long press (short press) and user hasn't set run time to 20 hours
-            {
-                incrementRunTime();
-            }
         }
-    }
+    } 
 }
 
 void checkTime()
 {
     if((time_match) && (0 < runtime_hours))
     {
-        if(0 == timer_override) // Timer not overridden. Execute normal instructions.
+        if(0 == (timer_override_ON | timer_override_OFF)) // Timer not overridden. Execute normal instructions.
         {
             if(1 == pump_on)
             {
@@ -255,8 +283,8 @@ void checkTime()
             }
             else
             {
-                // Error state. Reset system (turns pump off)
-                reset();
+                // Error state. Turn the pump off
+                stopPump();
             }
 
             time_match = 0;
@@ -285,19 +313,19 @@ void main(void)
         
         if(0 == (t_1s % 5))
         {
-            if(0 != timer_override) // Flash both lights to indicate timer is overridden
+            if(0 != (timer_override_ON | timer_override_OFF)) // Flash both lights to indicate timer is overridden
             {
-                GPIO ^= (led_rst | led_hours);
+                GPIO ^= (led_red | led_green);
             }
             else if(0 == runtime_hours) // Flash red LED to indicate timer is not running
             {
-                GPIO ^= led_rst;
+                GPIO ^= led_red;
             }
         }
         else
         {
-            GPIO &= ~led_rst;
-            GPIO &= ~led_hours;
+            GPIO &= ~led_red;
+            GPIO &= ~led_green;
         }
     }
 }
