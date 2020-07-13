@@ -106,7 +106,11 @@ void stopPump()
 // Resets the timer variables (excluding override)
 void reset()
 {
-    stopPump();    
+    if(0 == timer_override_ON) // Don't stop the pump if it's overridden to ON
+    {
+        stopPump();    
+    }
+     
     runtime_hours = 0;
     timed_pump_state = 0;
     t_8ms = 0;
@@ -187,40 +191,35 @@ void displayHours()
 void incrementRunTime()
 {
     runtime_hours++;
+    
     if(1 == runtime_hours)
     {
         t_8ms = 0;
         t_1s = 1;
         t_1m = 0;
         t_1h = 0;
+        timed_pump_state = 1;
+
         if(0 == timer_override_OFF)
         {
             startPump();
-            timed_pump_state = 1;
         }
     }
-
-    half_runtime_hours = runtime_hours / 2;
 }
 
 void decrementRunTime()
 {
     runtime_hours--;
+    
     if(0 == runtime_hours)
     {
-        if(0 == timer_override_ON)
-        {
-            stopPump();
-            timed_pump_state = 0;
-        }
+        reset();
     }
-
-    half_runtime_hours = runtime_hours / 2;
 }
 
 void checkButtons()
 {
-    if(0 == (GPIO & btn_subtracthour)) // Reset button pressed
+    if(0 == (GPIO & btn_subtracthour)) // Subtract-hour button pressed
     {
         _delay(50000); // 50ms debounce
         
@@ -234,13 +233,17 @@ void checkButtons()
             }
             else // Short press
             {
-                decrementRunTime();
+                if(0 < runtime_hours)
+                {
+                    decrementRunTime();
+                }
+                
                 displayHours();
             }
         }
     }
    
-    else if(0 == (GPIO & btn_addhour)) // Reset button pressed
+    else if(0 == (GPIO & btn_addhour)) // Add-hour button pressed
     {
         _delay(50000); // 50ms debounce
         
@@ -269,6 +272,9 @@ void checkTime()
 {
     if((time_match) && (0 < runtime_hours))
     {
+        // When the timer is de-overridden, this will put the pump in the correct state
+        timed_pump_state ^= 1;
+        
         if(0 == (timer_override_ON | timer_override_OFF)) // Timer not overridden. Execute normal instructions.
         {
             if(1 == pump_on)
@@ -288,11 +294,6 @@ void checkTime()
             }
 
             time_match = 0;
-        }
-        else // Timer is overridden. Store the correct pump state, but don't change the actual pump state.
-        {
-            // When the timer is de-overridden, this will put the pump in the correct state
-            timed_pump_state ^= 1;
         }
     }
 }
