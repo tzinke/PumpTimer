@@ -17,12 +17,12 @@ volatile uint8_t t_8ms = 0;
 volatile int8_t t_1s = 0; // This is signed for correction factor
 volatile uint8_t t_1m = 0;
 volatile uint8_t t_1h = 0;
-volatile uint8_t time_match = 0;
+volatile uint8_t on_time_match = 0; // 0 == no action, 1 == Time to turn pump on
+volatile uint8_t off_time_match = 0; // 0 == no action, 1 == Time to turn pump off
 
-static uint8_t runtime_hours = 0;
-static uint8_t half_runtime_hours = 0;
-static uint8_t pump_on = 0;
-static uint8_t timed_pump_state = 0; // Store the pump state according to the timer for proper de-overrides
+static uint8_t runtime_hours = 0; // # hours for pump to run each day
+static uint8_t pump_state = 0; // 0 == off, 1 == on
+static uint8_t timed_pump_state = 0; // Store the pump state according to the timer for proper de-overrides. 0 off, 1 on
 static uint8_t timer_override_ON = 0; // Bool storing if the timer is overridden to pump on
 static uint8_t timer_override_OFF = 0; // Bool storing if the timer is overridden to pump off
 
@@ -33,7 +33,7 @@ void __interrupt () isr()
         T0IF = 0; // Clear the overflow bit
         TMR0 = 0x79;
         t_8ms++;
-        if(122 == t_8ms) // This and line 35 is as close as I can get to a perfect 1 second increment
+        if(122 == t_8ms) // This is as close as I can get to a perfect 1 second increment
         {
             t_1s++;
             t_8ms = 0;
@@ -54,7 +54,14 @@ void __interrupt () isr()
                 t_1h = 0;
             }
 
-            time_match = ((0 == t_1h) || (t_1h == runtime_hours));            
+            if((0 == t_1h) && (0 < runtime_hours))
+            {
+                on_time_match = 1;
+            }
+            else if(t_1h == runtime_hours)
+            {
+                off_time_match = 1;
+            }
         }
     }
 }
@@ -90,23 +97,25 @@ void startPump()
 {
     // Turn pump on
     GPIO |= relays_on;
-    _delay(15000);
+    _delay(16000);
     GPIO &= ~relays_on;
-    pump_on = 1;
+    pump_state = 1;
 }
+
 void stopPump()
 {
     // Turn pump off
     GPIO |= relays_off;
-    _delay(15000);
+    _delay(16000);
     GPIO &= ~relays_off;
-    pump_on = 0;
+    pump_state = 0;
 }
 
 // Resets the timer variables (excluding override)
 void reset()
 {
-    if(0 == timer_override_ON) // Don't stop the pump if it's overridden to ON
+    // Don't want to energize relay coils if timer is overridden
+    if((0 == timer_override_ON) && (0 == timer_override_OFF))
     {
         stopPump();    
     }
@@ -121,13 +130,17 @@ void reset()
 
 void overrideToOff()
 {
+    // Not already overridden. Put in override_off state
     if(0 == timer_override_OFF)
     {
         timer_override_OFF = 1;
         timer_override_ON = 0;
-        stopPump();
+        if(1 == pump_state)
+        {
+            stopPump();
+        }
     }
-    else
+    else // Already overridden. Return to timed state
     {
         timer_override_OFF = 0;
         
@@ -137,7 +150,7 @@ void overrideToOff()
         }
     }
     
-    // Let user know that override was performed
+    // Let user know that override input was received
     GPIO |= led_red | led_green;
     _delay(1000000);
     GPIO &= ~(led_red | led_green);
@@ -145,13 +158,17 @@ void overrideToOff()
 
 void overrideToOn()
 {
+    // Not already overridden. Put in override_on state
     if(0 == timer_override_ON)
     {
         timer_override_ON = 1;
         timer_override_OFF = 0;
-        startPump();
+        if(0 == pump_state)
+        {
+            startPump();
+        }
     }
-    else
+    else // Already overridden. Return to timed state
     {
         timer_override_ON = 0;
         
@@ -161,7 +178,7 @@ void overrideToOn()
         }
     }
     
-    // Let user know that override was performed
+    // Let user know that override input was received
     GPIO |= led_red | led_green;
     _delay(1000000);
     GPIO &= ~(led_red | led_green);
@@ -191,7 +208,7 @@ void displayHours()
 void incrementRunTime()
 {
     runtime_hours++;
-    
+
     if(1 == runtime_hours)
     {
         t_8ms = 0;
@@ -205,15 +222,27 @@ void incrementRunTime()
             startPump();
         }
     }
+    else if((runtime_hours > t_1h) && (0 == pump_state))
+    {
+        // Incremented beyond the current time after runtime. Turn pump on.
+        // This time-match event won't be caught by the ISR
+        on_time_match = 1;
+    }
 }
 
 void decrementRunTime()
 {
     runtime_hours--;
-    
+
     if(0 == runtime_hours)
     {
         reset();
+    }
+    else if((runtime_hours == t_1h) && (1 == pump_state))
+    {
+        // Decremented beyond the current time during runtime. Turn pump off.
+        // This time-match event won't be caught by the ISR
+        off_time_match = 1;
     }
 }
 
@@ -270,30 +299,26 @@ void checkButtons()
 
 void checkTime()
 {
-    if((time_match) && (0 < runtime_hours))
+    if(1 == on_time_match)
     {
-        // When the timer is de-overridden, this will put the pump in the correct state
-        timed_pump_state ^= 1;
+        on_time_match = 0;
+        timed_pump_state = 1;
         
-        if(0 == (timer_override_ON | timer_override_OFF)) // Timer not overridden. Execute normal instructions.
+        // If timer is not overridden, turn pump on
+        if((0 == timer_override_OFF) && (0 == timer_override_ON))
         {
-            if(1 == pump_on)
-            {
-                // Turn pump off
-                stopPump();
-            }
-            else if(0 == pump_on)
-            {
-                // Turn pump on
-                startPump();
-            }
-            else
-            {
-                // Error state. Turn the pump off
-                stopPump();
-            }
-
-            time_match = 0;
+            startPump();
+        }
+    }
+    else if(1 == off_time_match)
+    {
+        off_time_match = 0;
+        timed_pump_state = 0;
+        
+        // If timer is not overridden, turn pump off
+        if((0 == timer_override_OFF) && (0 == timer_override_ON))
+        {
+            stopPump();
         }
     }
 }
@@ -314,13 +339,17 @@ void main(void)
         
         if(0 == (t_1s % 5))
         {
-            if(0 != (timer_override_ON | timer_override_OFF)) // Flash both lights to indicate timer is overridden
+            if((1 == timer_override_ON) || (1 == timer_override_OFF)) // Flash both lights to indicate timer is overridden
             {
                 GPIO ^= (led_red | led_green);
             }
             else if(0 == runtime_hours) // Flash red LED to indicate timer is not running
             {
                 GPIO ^= led_red;
+            }
+            else
+            {
+                GPIO ^= led_green; // Flash greed LED to indicate normal operation
             }
         }
         else
