@@ -548,12 +548,12 @@ Wire Wire Line
 Wire Wire Line
 	9150 5500 9150 5550
 $Comp
-L Mechanical:Battery_Cell_Holder_2032 BT1
+L battery_cell:Battery_Cell BT1
 U 1 1 6076BE04
 P 9150 5400
 F 0 "BT1" H 9268 5496 50  0000 L CNN
-F 1 "2032" H 9268 5405 50  0000 L CNN
-F 2 "Battery:BAT_HLD_2032" V 9150 5460 50  0001 C CNN
+F 1 "1632" H 9268 5405 50  0000 L CNN
+F 2 "temp:Vertical_16mm_coin" V 9150 5460 50  0001 C CNN
 F 3 "~" V 9150 5460 50  0001 C CNN
 	1    9150 5400
 	1    0    0    -1  

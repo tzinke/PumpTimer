@@ -205,25 +205,6 @@ X 2 2 0 0 100 R 59 59 1 1 U
 ENDDRAW
 ENDDEF
 #
-# Mechanical_Battery_Cell_Holder_2032
-#
-DEF Mechanical_Battery_Cell_Holder_2032 BT 0 0 N N 1 F N
-F0 "BT" 100 100 50 H V L CNN
-F1 "Mechanical_Battery_Cell_Holder_2032" 100 0 50 H V L CNN
-F2 "Battery:BAT_HLD_2032" 0 60 50 V I C CNN
-F3 "" 0 60 50 V I C CNN
-DRAW
-S -90 70 90 60 0 1 0 F
-S -62 47 58 27 0 1 0 F
-P 2 0 1 0 0 30 0 0 N
-P 2 0 1 0 0 70 0 100 N
-P 2 0 1 10 20 135 60 135 N
-P 2 0 1 10 40 155 40 115 N
-X + 1 0 200 100 D 50 50 1 1 P
-X - 2 0 -100 100 U 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
 # Relay_ADW1205HLW
 #
 DEF Relay_ADW1205HLW K 0 40 Y N 1 L N
@@ -359,6 +340,25 @@ P 4 0 1 0 130 15 115 -10 145 -10 130 15 N
 X G 1 -200 0 100 R 50 50 1 1 I
 X S 2 100 -200 100 U 50 50 1 1 P
 X D 3 100 200 100 D 50 50 1 1 P
+ENDDRAW
+ENDDEF
+#
+# battery_cell_Battery_Cell
+#
+DEF battery_cell_Battery_Cell BT 0 0 N N 1 F N
+F0 "BT" 100 100 50 H V L CNN
+F1 "battery_cell_Battery_Cell" 100 0 50 H V L CNN
+F2 "" 0 60 50 V I C CNN
+F3 "" 0 60 50 V I C CNN
+DRAW
+S -90 70 90 60 0 1 0 F
+S -62 47 58 27 0 1 0 F
+P 2 0 1 0 0 30 0 0 N
+P 2 0 1 0 0 70 0 100 N
+P 2 0 1 10 20 135 60 135 N
+P 2 0 1 10 40 155 40 115 N
+X - NEG 0 -100 100 U 50 50 1 1 P
+X + POS 0 200 100 D 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
