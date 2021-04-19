@@ -1,11 +1,4 @@
-19095552081949999
-Battery
-BAT_HLD_2032
-
-
-0
-5
-2
+19080928548730432
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -304,13 +297,6 @@ Battery
 Battery_Panasonic_CR3032-VCN_Vertical_CircularHoles
 Panasonic CR-3032/VCN battery, https://industrial.panasonic.com/cdbs/www-data/pdf2/AAA4000/AAA4000D140.pdf
 battery CR-3032 coin cell vertical
-0
-2
-2
-Battery
-Vertical_16mm_coin_holder
-
-
 0
 2
 2
@@ -1543,13 +1529,6 @@ Button_Switch_SMD
 SW_SPST_TL3342
 Low-profile SMD Tactile Switch, https://www.e-switch.com/system/asset/product_line/data_sheet/165/TL3342.pdf
 SPST Tactile Switch
-0
-4
-2
-Button_Switch_SMD
-TL3305AF160QG
-
-
 0
 4
 2
@@ -6237,26 +6216,12 @@ Grove-1x04
 4
 4
 Connector
-PHOENIX_1935161
-
-
-0
-2
-2
-Connector
 SpringContact_Harwin_S1941-46R
 7.25mm SMT Multi-directional Spring Contact (T+R), https://cdn.harwin.com/pdfs/S1941R.pdf
 spring contact emi emc shield
 0
 1
 1
-Connector
-TE_282856-2
-
-
-0
-2
-2
 Connector
 Tag-Connect_TC2030-IDC-FP_2x03_P1.27mm_Vertical
 Tag-Connect programming header; http://www.tag-connect.com/Materials/TC2030-IDC.pdf
@@ -49273,13 +49238,6 @@ Diode SMF (DO-214AB)
 2
 2
 Diode_SMD
-D_SOD-80
-
-
-0
-2
-2
-Diode_SMD
 D_SOD-110
 SOD-110
 SOD-110
@@ -68698,13 +68656,6 @@ SOP SO
 8
 8
 Package_SO
-SOP-14_127P780x200
-
-
-0
-14
-14
-Package_SO
 SOP-16_3.9x9.9mm_P1.27mm
 SOP, 16 Pin (https://www.diodes.com/assets/Datasheets/PAM8403.pdf), generated with kicad-footprint-generator ipc_gullwing_generator.py
 SOP SO
@@ -74577,13 +74528,6 @@ AXICOM HF3-Series Relay Pitch 1.27mm 75ohm
 0
 16
 16
-Relay_THT
-RELAY_ADW1205HLW
-
-
-0
-5
-5
 Relay_THT
 Relay_1-Form-A_Schrack-RYII_RM5mm
 Relay, 1-Form-A, Schrack-RYII, RM5mm, SPST-NO
@@ -83082,10 +83026,3 @@ varistor SIOV
 0
 2
 2
-power
-RAC03-05SK
-
-
-0
-4
-4
