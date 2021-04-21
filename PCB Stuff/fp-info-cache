@@ -1,4 +1,4 @@
-19080928548730432
+19106830360087012
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -50875,6 +50875,118 @@ emi filter
 0
 5
 5
+Footprints
+BAT_BK-5010
+
+
+0
+3
+3
+Footprints
+BAT_HLD_2032
+
+
+0
+5
+2
+Footprints
+C_1206_3216Metric_Pad1.33x1.80mm_HandSolder
+Capacitor SMD 1206 (3216 Metric), square (rectangular) end terminal, IPC_7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator
+capacitor handsolder
+0
+2
+2
+Footprints
+D_SOD-80
+
+
+0
+2
+2
+Footprints
+JST_PH_B4B-PH-SM4-TB_1x04-1MP_P2.00mm_Vertical
+JST PH series connector, B4B-PH-SM4-TB (http://www.jst-mfg.com/product/pdf/eng/ePH.pdf), generated with kicad-footprint-generator
+connector JST PH side entry
+0
+6
+5
+Footprints
+JST_PH_B6B-PH-SM4-TB_1x06-1MP_P2.00mm_Vertical
+JST PH series connector, B6B-PH-SM4-TB (http://www.jst-mfg.com/product/pdf/eng/ePH.pdf), generated with kicad-footprint-generator
+connector JST PH side entry
+0
+8
+7
+Footprints
+LED_0603_1608Metric_Castellated
+LED SMD 0603 (1608 Metric), castellated end terminal, IPC_7351 nominal, (Body size source: http://www.tortai-tech.com/upload/download/2011102023233369053.pdf), generated with kicad-footprint-generator
+LED castellated
+0
+2
+2
+Footprints
+PHOENIX_1935161
+
+
+0
+2
+2
+Footprints
+RAC03-05SK
+
+
+0
+4
+4
+Footprints
+RELAY_ADW1205HLW
+
+
+0
+5
+5
+Footprints
+R_0603_1608Metric_Pad0.98x0.95mm_HandSolder
+Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC_7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator
+resistor handsolder
+0
+2
+2
+Footprints
+SOP-14_127P780x200
+
+
+0
+14
+14
+Footprints
+SOT-23
+SOT-23, Standard
+SOT-23
+0
+3
+3
+Footprints
+TE_282856-2
+
+
+0
+2
+2
+Footprints
+TL3305AF160QG
+
+
+0
+4
+2
+Footprints
+Vertical_16mm_coin_holder
+
+
+0
+2
+2
 Fuse
 Fuse_0402_1005Metric
 Fuse SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: http://www.tortai-tech.com/upload/download/2011102023233369053.pdf), generated with kicad-footprint-generator
