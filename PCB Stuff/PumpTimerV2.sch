@@ -343,23 +343,10 @@ F 3 "" H 6050 2250 50  0001 C CNN
 $EndComp
 Text Label 6150 2350 0    50   ~ 0
 RTC_~INT~
-Text Label 5550 2450 0    50   ~ 0
-GPIO27
-Text Label 5550 2550 0    50   ~ 0
-GPIO22
-NoConn ~ 6650 2650
-Wire Wire Line
-	6700 2650 6650 2650
-Text Label 5350 2750 0    50   ~ 0
-GPIO10(MOSI)
-Text Label 5350 2950 0    50   ~ 0
-GPIO11(SCLK)
 Wire Wire Line
 	6050 2250 6700 2250
 Wire Wire Line
 	6700 2350 6150 2350
-Wire Wire Line
-	6700 2850 6150 2850
 $Comp
 L power:GND #PWR023
 U 1 1 6079F112
@@ -371,10 +358,6 @@ F 3 "" H 8150 2450 50  0001 C CNN
 	1    8150 2450
 	-1   0    0    1   
 $EndComp
-Text Label 7800 2550 0    50   ~ 0
-GPIO23
-Text Label 7800 2650 0    50   ~ 0
-GPIO24
 $Comp
 L power:GND #PWR024
 U 1 1 6079FF85
@@ -386,18 +369,6 @@ F 3 "" H 8150 2750 50  0001 C CNN
 	1    8150 2750
 	-1   0    0    1   
 $EndComp
-Text Label 7350 2850 0    50   ~ 0
-GPIO25
-Text Label 7750 2950 0    50   ~ 0
-GPIO8(SS0)
-Wire Wire Line
-	7200 2850 7350 2850
-Wire Wire Line
-	7350 2950 7200 2950
-Wire Wire Line
-	7200 2650 7350 2650
-Wire Wire Line
-	7200 2550 7350 2550
 $Comp
 L Diode:Generic_Diode D2
 U 1 1 607648B8
@@ -695,51 +666,6 @@ F 5 "282856-2" H 4250 2400 50  0001 L BNN "Comment"
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:R_US R7
-U 1 1 607C006A
-P 6050 2750
-F 0 "R7" V 5950 2650 50  0000 C CNN
-F 1 "49.9" V 6000 2900 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 6090 2740 50  0001 C CNN
-F 3 "ERJ-3EKF49R9V" H 6050 2750 50  0001 C CNN
-	1    6050 2750
-	0    1    1    0   
-$EndComp
-Text Label 6150 2850 0    50   ~ 0
-GPIO9(MISO)
-Wire Wire Line
-	5900 2950 5350 2950
-Wire Wire Line
-	5350 2750 5900 2750
-Wire Wire Line
-	6200 2750 6700 2750
-Wire Wire Line
-	6700 2950 6200 2950
-$Comp
-L Device:R_US R11
-U 1 1 607CC497
-P 7500 2950
-F 0 "R11" V 7450 2800 50  0000 C CNN
-F 1 "49.9" V 7600 2950 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 7540 2940 50  0001 C CNN
-F 3 "ERJ-3EKF49R9V" H 7500 2950 50  0001 C CNN
-	1    7500 2950
-	0    1    1    0   
-$EndComp
-Wire Wire Line
-	7650 2950 7750 2950
-$Comp
-L Device:R_US R8
-U 1 1 607D7BAE
-P 6050 2950
-F 0 "R8" V 6100 2800 50  0000 C CNN
-F 1 "49.9" V 6100 3150 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 6090 2940 50  0001 C CNN
-F 3 "ERJ-3EKF49R9V" H 6050 2950 50  0001 C CNN
-	1    6050 2950
-	0    1    1    0   
-$EndComp
-$Comp
 L Device:C C1
 U 1 1 607DE07A
 P 1400 2750
@@ -778,32 +704,6 @@ F 3 "" H 8150 2050 50  0001 C CNN
 	1    8150 2050
 	-1   0    0    1   
 $EndComp
-$Comp
-L Device:R_US R9
-U 1 1 607F57A6
-P 7500 2550
-F 0 "R9" V 7450 2400 50  0000 C CNN
-F 1 "49.9" V 7450 2700 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 7540 2540 50  0001 C CNN
-F 3 "ERJ-3EKF49R9V" H 7500 2550 50  0001 C CNN
-	1    7500 2550
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:R_US R10
-U 1 1 607F6412
-P 7500 2650
-F 0 "R10" V 7450 2500 50  0000 C CNN
-F 1 "49.9" V 7450 2800 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 7540 2640 50  0001 C CNN
-F 3 "ERJ-3EKF49R9V" H 7500 2650 50  0001 C CNN
-	1    7500 2650
-	0    1    1    0   
-$EndComp
-Wire Wire Line
-	7650 2650 7800 2650
-Wire Wire Line
-	7650 2550 7800 2550
 Wire Wire Line
 	7200 2450 8150 2450
 Wire Wire Line
@@ -847,36 +747,6 @@ Wire Wire Line
 Wire Wire Line
 	9000 1750 9550 1750
 $Comp
-L Device:R_US R5
-U 1 1 60879D01
-P 6050 2450
-F 0 "R5" V 6000 2300 50  0000 C CNN
-F 1 "49.9" V 6000 2600 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 6090 2440 50  0001 C CNN
-F 3 "ERJ-3EKF49R9V" H 6050 2450 50  0001 C CNN
-	1    6050 2450
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:R_US R6
-U 1 1 6087A462
-P 6050 2550
-F 0 "R6" V 6000 2400 50  0000 C CNN
-F 1 "49.9" V 6000 2700 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 6090 2540 50  0001 C CNN
-F 3 "ERJ-3EKF49R9V" H 6050 2550 50  0001 C CNN
-	1    6050 2550
-	0    1    1    0   
-$EndComp
-Wire Wire Line
-	5550 2550 5900 2550
-Wire Wire Line
-	5900 2450 5550 2450
-Wire Wire Line
-	6200 2450 6700 2450
-Wire Wire Line
-	6700 2550 6200 2550
-$Comp
 L power:GND #PWR035
 U 1 1 6088F768
 P 9500 2000
@@ -887,7 +757,6 @@ F 3 "" H 9500 2000 50  0001 C CNN
 	1    9500 2000
 	1    0    0    -1  
 $EndComp
-NoConn ~ 7200 2150
 Text Notes 9300 1200 0    79   ~ 0
 I2C Expansion Port\n   (just in case)
 Wire Notes Line width 10 style solid
@@ -944,14 +813,8 @@ Wire Wire Line
 	2000 6950 2000 6750
 Wire Wire Line
 	2000 6750 2300 6750
-Text Label 6150 2150 0    50   ~ 0
+Text Label 7800 2150 0    50   ~ 0
 RLY_S
-Wire Wire Line
-	6150 2150 6700 2150
-Text Label 7800 2350 0    50   ~ 0
-RLY_R
-Wire Wire Line
-	7800 2350 7200 2350
 Text Label 2000 6750 0    50   ~ 0
 RLY_S
 Text Label 3550 6750 0    50   ~ 0
@@ -1039,17 +902,6 @@ F 3 "" H 10800 3300 50  0001 C CNN
 	1    10800 3300
 	1    0    0    -1  
 $EndComp
-$Comp
-L power:+3V3 #PWR0103
-U 1 1 60797B23
-P 8900 2900
-F 0 "#PWR0103" H 8900 2750 50  0001 C CNN
-F 1 "+3V3" H 8915 3073 50  0000 C CNN
-F 2 "" H 8900 2900 50  0001 C CNN
-F 3 "" H 8900 2900 50  0001 C CNN
-	1    8900 2900
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	8900 2900 8900 2950
 Wire Wire Line
@@ -1128,4 +980,32 @@ NoConn ~ 7200 3250
 NoConn ~ 7200 3150
 NoConn ~ 7200 3050
 NoConn ~ 7200 3450
+$Comp
+L power:+5VD #PWR0103
+U 1 1 607FB41A
+P 8900 2900
+F 0 "#PWR0103" H 8900 2750 50  0001 C CNN
+F 1 "+5VD" H 8915 3073 50  0000 C CNN
+F 2 "" H 8900 2900 50  0001 C CNN
+F 3 "" H 8900 2900 50  0001 C CNN
+	1    8900 2900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7800 2350 7200 2350
+Text Label 7800 2350 0    50   ~ 0
+RLY_R
+Wire Wire Line
+	7200 2150 7800 2150
+NoConn ~ 6700 2150
+NoConn ~ 7200 2550
+NoConn ~ 7200 2650
+NoConn ~ 7200 2950
+NoConn ~ 7200 2850
+NoConn ~ 6700 2450
+NoConn ~ 6700 2550
+NoConn ~ 6700 2750
+NoConn ~ 6700 2850
+NoConn ~ 6700 2950
+NoConn ~ 6700 2650
 $EndSCHEMATC
