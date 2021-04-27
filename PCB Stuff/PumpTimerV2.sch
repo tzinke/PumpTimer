@@ -4,10 +4,10 @@ EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
-Title ""
+Title "PumpTimerV2"
 Date "2021-04-15"
-Rev ""
-Comp ""
+Rev "-"
+Comp "Taylor Zinke"
 Comment1 ""
 Comment2 ""
 Comment3 ""
@@ -823,12 +823,6 @@ Wire Wire Line
 	9750 3200 10100 3200
 Wire Notes Line width 10 style solid
 	9350 2600 8750 2600
-Wire Notes Line width 10 style solid
-	8750 2600 8750 3750
-Wire Notes Line width 10 style solid
-	8750 3750 10950 3750
-Wire Notes Line width 10 style solid
-	10950 3750 10950 2600
 Text Notes 9400 2650 0    79   ~ 0
 Override Button\n and Indicator
 Wire Notes Line width 10 style solid
@@ -1176,4 +1170,38 @@ F 4 "GMC31X5R107M10NT" H 2300 2750 50  0001 C CNN "Part"
 	1    2300 2750
 	1    0    0    -1  
 $EndComp
+$Comp
+L Device:C C4
+U 1 1 60875735
+P 9100 3600
+F 0 "C4" H 9215 3646 50  0000 L CNN
+F 1 "10u" H 9215 3555 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder" H 9138 3450 50  0001 C CNN
+F 3 "~" H 9100 3600 50  0001 C CNN
+F 4 "Something that's like 10u" H 9100 3600 50  0001 C CNN "Part"
+	1    9100 3600
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9100 3450 9100 3400
+Connection ~ 9100 3400
+$Comp
+L power:GND #PWR031
+U 1 1 60878A93
+P 9100 3800
+F 0 "#PWR031" H 9100 3550 50  0001 C CNN
+F 1 "GND" H 9105 3627 50  0000 C CNN
+F 2 "" H 9100 3800 50  0001 C CNN
+F 3 "" H 9100 3800 50  0001 C CNN
+	1    9100 3800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9100 3750 9100 3800
+Wire Notes Line width 10 style solid
+	8750 4050 10950 4050
+Wire Notes Line width 10 style solid
+	8750 2600 8750 4050
+Wire Notes Line width 10 style solid
+	10950 2600 10950 4050
 $EndSCHEMATC
