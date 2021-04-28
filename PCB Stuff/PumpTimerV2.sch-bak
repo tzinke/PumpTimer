@@ -4,10 +4,10 @@ EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
-Title ""
+Title "PumpTimerV2"
 Date "2021-04-15"
-Rev ""
-Comp ""
+Rev "-"
+Comp "Taylor Zinke"
 Comment1 ""
 Comment2 ""
 Comment3 ""
@@ -24,7 +24,7 @@ F 3 "" H 1850 1950 50  0001 L BNN
 F 4 "3W AC/DC-Converter 'POWERLINE' 3kV reg" H 1850 1950 50  0001 L BNN "Description"
 F 5 "None" H 1850 1950 50  0001 L BNN "Package"
 F 6 "Unavailable" H 1850 1950 50  0001 L BNN "Availability"
-F 7 "RAC03-05SK" H 1850 1950 50  0001 L BNN "MP"
+F 7 "RAC03-05SK" H 1850 1950 50  0001 L BNN "Part"
 F 8 "None" H 1850 1950 50  0001 L BNN "Price"
 F 9 "Recom Power" H 1850 1950 50  0001 L BNN "MF"
 	1    1850 1950
@@ -40,6 +40,7 @@ F 2 "RELAY_ADW1205HLW" H 1700 5950 50  0001 L BNN
 F 3 "" H 1700 5950 50  0001 L BNN
 F 4 "Manufacturer Recommendation" H 1700 5950 50  0001 L BNN "STANDARD"
 F 5 "Panasonic" H 1700 5950 50  0001 L BNN "MANUFACTURER"
+F 6 "ADW1205HLW" H 1700 5950 50  0001 C CNN "Part"
 	1    1700 5950
 	1    0    0    -1  
 $EndComp
@@ -53,6 +54,7 @@ F 2 "RELAY_ADW1205HLW" H 3850 5950 50  0001 L BNN
 F 3 "" H 3850 5950 50  0001 L BNN
 F 4 "Manufacturer Recommendation" H 3850 5950 50  0001 L BNN "STANDARD"
 F 5 "Panasonic" H 3850 5950 50  0001 L BNN "MANUFACTURER"
+F 6 "ADW1205HLW" H 3850 5950 50  0001 C CNN "Part"
 	1    3850 5950
 	1    0    0    -1  
 $EndComp
@@ -186,6 +188,7 @@ F 0 "Q1" H 2105 6746 50  0000 L CNN
 F 1 "DMN67D7L" H 2105 6655 50  0000 L CNN
 F 2 "Package_TO_SOT_SMD:SOT-23" H 2100 6625 50  0001 L CIN
 F 3 "http://www.diodes.com/assets/Datasheets/DMN67D7L.pdf" H 1900 6700 50  0001 L CNN
+F 4 "DMN67D7L" H 1900 6700 50  0001 C CNN "Part"
 	1    1900 6700
 	1    0    0    -1  
 $EndComp
@@ -197,6 +200,7 @@ F 0 "Q2" H 3655 6746 50  0000 L CNN
 F 1 "DMN67D7L" H 3655 6655 50  0000 L CNN
 F 2 "Package_TO_SOT_SMD:SOT-23" H 3650 6625 50  0001 L CIN
 F 3 "http://www.diodes.com/assets/Datasheets/DMN67D7L.pdf" H 3450 6700 50  0001 L CNN
+F 4 "DMN67D7L" H 3450 6700 50  0001 C CNN "Part"
 	1    3450 6700
 	1    0    0    -1  
 $EndComp
@@ -218,6 +222,7 @@ F 2 "Diode_SMD:D_SOD-323" H 2150 4950 50  0001 C CNN
 F 3 "~" H 2150 4950 50  0001 C CNN
 F 4 "Y" H 2150 4950 50  0001 L CNN "Spice_Netlist_Enabled"
 F 5 "D" H 2150 4950 50  0001 L CNN "Spice_Primitive"
+F 6 "BAV5004WS-7" V 2150 4950 50  0001 C CNN "Part"
 	1    2150 4950
 	0    -1   -1   0   
 $EndComp
@@ -231,6 +236,7 @@ F 2 "Diode_SMD:D_SOD-323" H 3000 4950 50  0001 C CNN
 F 3 "~" H 3000 4950 50  0001 C CNN
 F 4 "Y" H 3000 4950 50  0001 L CNN "Spice_Netlist_Enabled"
 F 5 "D" H 3000 4950 50  0001 L CNN "Spice_Primitive"
+F 6 "BAV5004WS-7" V 3000 4950 50  0001 C CNN "Part"
 	1    3000 4950
 	0    -1   -1   0   
 $EndComp
@@ -595,7 +601,7 @@ F 1 "282856-2" H 4480 2405 50  0000 L CNN
 F 2 "TE_282856-2" H 4250 2400 50  0001 L BNN
 F 3 "" H 4250 2400 50  0001 L BNN
 F 4 "Compliant with Exemptions" H 4250 2400 50  0001 L BNN "EU_RoHS_Compliance"
-F 5 "282856-2" H 4250 2400 50  0001 L BNN "Comment"
+F 5 "282856-2" H 4250 2400 50  0001 L BNN "Part"
 	1    4250 2400
 	1    0    0    -1  
 $EndComp
@@ -753,7 +759,7 @@ F 1 "282856-2" H 4480 1855 50  0000 L CNN
 F 2 "TE_282856-2" H 4250 1850 50  0001 L BNN
 F 3 "" H 4250 1850 50  0001 L BNN
 F 4 "Compliant with Exemptions" H 4250 1850 50  0001 L BNN "EU_RoHS_Compliance"
-F 5 "282856-2" H 4250 1850 50  0001 L BNN "Comment"
+F 5 "282856-2" H 4250 1850 50  0001 L BNN "Part"
 	1    4250 1850
 	1    0    0    -1  
 $EndComp
@@ -823,10 +829,6 @@ Wire Wire Line
 	9750 3200 10100 3200
 Wire Notes Line width 10 style solid
 	9350 2600 8750 2600
-Wire Notes Line width 10 style solid
-	8750 2600 8750 3750
-Wire Notes Line width 10 style solid
-	10950 3750 10950 2600
 Text Notes 9400 2650 0    79   ~ 0
 Override Button\n and Indicator
 Wire Notes Line width 10 style solid
@@ -970,7 +972,7 @@ F 1 "282856-2" H 4480 2955 50  0000 L CNN
 F 2 "TE_282856-2" H 4250 2950 50  0001 L BNN
 F 3 "" H 4250 2950 50  0001 L BNN
 F 4 "Compliant with Exemptions" H 4250 2950 50  0001 L BNN "EU_RoHS_Compliance"
-F 5 "282856-2" H 4250 2950 50  0001 L BNN "Comment"
+F 5 "282856-2" H 4250 2950 50  0001 L BNN "Part"
 	1    4250 2950
 	1    0    0    -1  
 $EndComp
@@ -1203,9 +1205,9 @@ $EndComp
 Wire Wire Line
 	9100 3750 9100 3800
 Wire Notes Line width 10 style solid
-	8750 3750 8750 4050
-Wire Notes Line width 10 style solid
 	8750 4050 10950 4050
 Wire Notes Line width 10 style solid
-	10950 4050 10950 3750
+	8750 2600 8750 4050
+Wire Notes Line width 10 style solid
+	10950 2600 10950 4050
 $EndSCHEMATC
