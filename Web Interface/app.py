@@ -46,6 +46,13 @@ from flask import Flask, render_template, request, jsonify, send_file
 ip = "192.168.69.1"
 server_port = 5000
 
+#Schedule and log file paths
+#Schedules are written to files so the timer can resume 
+#   the schedule in case of temporary power outage
+sched_path = "./static/schedule"
+single_path = "./static/single"
+log_dir = "./static/logs/"
+log_path = null #Will get set to current date
 
 #State variables
 noflowantonio = False
@@ -82,10 +89,16 @@ app = Flask(__name__)
 
 def startPump():
     #GPIO 18 high for 15ms
+    gpio.output(18, 1)
+    
+    gpio.output(18, 0)
     pass
 
 def stopPump():
     #GPIO14 high for 15ms
+    gpio.output(14, 1)
+    
+    gpio.output(14, 0)
     pass
 
 def synctime():
@@ -136,6 +149,14 @@ def setSchedule():
     if request.method == 'POST':
         try:
             sched_on = int(request.form['scheduleon'])
+            with open(sched_path, "r") as file:
+                file.readline() #Don't care about the old on-time
+                old_off = int(file.readline())
+                
+            with open(sched_path, "w") as file:
+                file.write(sched_on)
+                file.write(old_off)
+                
             if curr_time >= sched_on:
                 startPump()
         except:
@@ -143,6 +164,12 @@ def setSchedule():
       
         try:
             sched_off = int(request.form['scheduleoff'])
+            with open(sched_path, "r") as file:
+                old_on = int(file.readline())
+                
+            with open(sched_path, "w") as file:
+                file.write(old_on)
+                file.write(sched_off)
             if curr_time >= sched_off:
                 stopPump()
         except:
@@ -268,4 +295,13 @@ def add_header(r):
     return r
 
 if __name__ == "__main__":
+    #Configure GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    gpio.setup(18, gpio.OUT)
+    gpio.setup(14, gpio.OUT)
+    #pin 10 is ~btn_rdy LED and pin 7 is the button
+    #GPIO.setup(19, GPIO.IN)
+    #GPIO.add_event_detect(19, GPIO.BOTH, callback=exposure_timestamp)
+    
     app.run(host=ip, port=server_port, debug=True, use_reloader=True)
