@@ -7,9 +7,9 @@ These functions are executed when requested by a client connected in a web brows
 
 Functions Defined
 ------------------
-get_incline: Gets a single reading from the inclinometer 
-    Parameters: None
-    Returns: String containing the pitch, roll, and temperature of inclinometer
+Function: top-level description
+    Parameters
+    Returns: Data type + description
     
 set_schedule:
 
