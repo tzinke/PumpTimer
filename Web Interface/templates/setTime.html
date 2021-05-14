@@ -1,0 +1,27 @@
+<DOCTYPE html>
+<head>
+   <title>Pool Pump Interface</title>
+   <link rel="stylesheet" href="bootstrap.min.css">
+   <style>
+     .row-margin-05 { margin-top: 2em; }
+   </style>
+</head>
+<html>
+<body>
+   <h1 align='center'>Pool Pump Interface</h1>
+
+   <div class="container" align='center'>
+     <p>Current time: </p>
+     <form>
+      <input type = "text" id="input">
+      <button type = "button" onclick="update()">Auto-fill form field</button>
+     </form>
+     <script>
+      function updateTime(){
+       document.getElementById("input").value = "This is an auto-generated value";
+      }
+     </script>
+   </div>
+
+</body>
+</html>

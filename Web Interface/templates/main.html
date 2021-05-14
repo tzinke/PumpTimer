@@ -1,29 +1,33 @@
 <DOCTYPE html>
 <head>
    <title>Pool Pump Interface</title>
-   <!-- Latest compiled and minified CSS -->
-   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-   <!-- Optional theme -->
-   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
-   <!-- Latest compiled and minified JavaScript -->
-   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+   <link rel="stylesheet" href="bootstrap.min.css">
+   <style>
+     .row-margin-05 { margin-top: 2em; }
+   </style>
 </head>
 
 <body>
    <h1 align='center'>Pool Pump Interface</h1>
 
-   <a href="/setSchedule" class="btn btn-block btn-lg btn-primary" role="button">Set Pump Schedule</a></div></div>
-  
-   <a href="/setTime" class="btn btn-block btn-lg btn-primary" role="button">Set System Time</a></div></div>
-   
-   <a href="/setSingle" class="btn btn-block btn-lg btn-primary" role="button">Schedule a One-time Run</a></div></div>
-   
-   <a href="/toggle" class="btn btn-block btn-lg btn-primary" role="button">Toggle Pump On or Off</a></div></div>
-   
-   <a href="/logs" class="btn btn-block btn-lg btn-primary" role="button">View Logs</a></div></div>
-   
-   <a href="/users" class="btn btn-block btn-lg btn-primary" role="button">Add or Remove User</a></div></div>
+   <div class="container" align='center'>
+     <div class="row row-margin-05" align='center'>
+       <div class="col-4">
+         <a href="/setSchedule" class="btn btn-lg btn-primary" role="button">Set Pump Schedule</a>
+         <a href="/setTime" class="btn btn-lg btn-primary" role="button">Set System Time</a>
+       </div>
+     </div>
+     <div class="row row-margin-05">
+       <div class="col-4">
+         <a href="/setSingle" class="btn btn-lg btn-primary" role="button">Schedule a One-time Run</a>
+         <a href="/toggle" class="btn btn-lg btn-primary" role="button">Toggle Pump On or Off</a>
+     </div>
+     <div class="row row-margin-05 justify-content-around">
+       <div class="col-4">
+         <a href="/logs" class="btn btn-lg btn-primary" role="button" align="center">View Logs</a>
+         <a href="/users" class="btn btn-lg btn-primary" role="button">Add or Remove User</a>
+     </div>
+   </div>
 
 </body>
 </html>
-
