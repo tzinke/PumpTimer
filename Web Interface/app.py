@@ -10,7 +10,7 @@ Functions Defined
 Function: top-level description
     Parameters
     Returns: Data type + description
-    
+
 set_schedule:
 
 set_single:
@@ -37,9 +37,10 @@ import datetime
 import json
 import subprocess
 from flask import Flask, render_template, request, jsonify, send_file
+import RTC
 
 ##################################################################################################
-# # Global Variables 
+# # Global Variables
 ##################################################################################################
 
 #Define the address and port this server will run on
@@ -47,7 +48,7 @@ ip = "192.168.69.1"
 server_port = 5000
 
 #Schedule and log file paths
-#Schedules are written to files so the timer can resume 
+#Schedules are written to files so the timer can resume
 #   the schedule in case of temporary power outage
 sched_path = "./static/schedule"
 single_path = "./static/single"
@@ -90,14 +91,14 @@ app = Flask(__name__)
 def startPump():
     #GPIO 18 high for 15ms
     gpio.output(18, 1)
-    
+
     gpio.output(18, 0)
     pass
 
 def stopPump():
     #GPIO14 high for 15ms
     gpio.output(14, 1)
-    
+
     gpio.output(14, 0)
     pass
 
@@ -118,24 +119,25 @@ def main():
     -----------
     This function gets called when the client navigates to "[serveraddress]/"
     (AKA the home page of the web app)
-     
+
      Parameters
     ----------
     None
-              
+
     Returns
     -------
     Renders the main.html page
-     
+
     Examples
-    --------  
-     
+    --------
+
     Change Log
     ----------
-     
+
     Notes
     -----
-    """ 
+    """
+    rtc_get()
 
     templateData = {
         'sensors' : sensors,
@@ -145,28 +147,28 @@ def main():
     return render_template('main.html', **templateData)
 
 @app.route("/setSchedule", methods=['GET', 'POST'])
-def setSchedule(): 
+def setSchedule():
     if request.method == 'POST':
         try:
             sched_on = int(request.form['scheduleon'])
             with open(sched_path, "r") as file:
                 file.readline() #Don't care about the old on-time
                 old_off = int(file.readline())
-                
+
             with open(sched_path, "w") as file:
                 file.write(sched_on)
                 file.write(old_off)
-                
+
             if curr_time >= sched_on:
                 startPump()
         except:
             pass
-      
+
         try:
             sched_off = int(request.form['scheduleoff'])
             with open(sched_path, "r") as file:
                 old_on = int(file.readline())
-                
+
             with open(sched_path, "w") as file:
                 file.write(old_on)
                 file.write(sched_off)
@@ -174,15 +176,15 @@ def setSchedule():
                 stopPump()
         except:
             pass
-        
+
     templateData = {
         'curr_on' : sched_on,
         'curr_off' : sched_off
     }
-    
+
     return render_template('setSchedule.html', **templateData)
 
-@app.route("/downloadLog") 
+@app.route("/downloadLog")
 def download():
     """
     Description
@@ -190,24 +192,24 @@ def download():
     This function gets called when the client navigates to "[serveraddress]/transfer"
 
     This function sends the log file for download to the client computer.
-    
+
     Parameters
     ----------
     None
-             
+
     Returns
     -------
     Causes the log file to be sent to the client computer
-    
+
     Examples
-    --------  
-    
+    --------
+
     Change Log
     ----------
-    
+
     Notes
     -----
-    """ 
+    """
     path = "PathToLog" % datetime.datetime.now() #TODO
 
     return send_file(path, as_attachment=True)
@@ -218,30 +220,30 @@ def logs():
     Description
     -----------
     This function gets called when the client navigates to "[serveraddress]/
-    
+
     Parameters
     ----------
     Whether this is a GET (data to client) request or a POST (data from client) request
-             
+
     Returns
     -------
-    
+
     Examples
-    --------  
-    
+    --------
+
     Change Log
     ----------
-    
+
     Notes
     -----
-    """ 
+    """
     global options, filename
 
     available_logs = []
     for f in os.listdir("logs"):
         if f.endswith(".txt"):
             available_logs.append(f)
-         
+
     available_logs.sort(reverse=True)
     logs = {
         'logs' : available_logs
@@ -257,35 +259,62 @@ def logs():
         if not requested == 'none':
             #TODO
 
-    return render_template('.html', **(logs), **loginfo)
-   
+    return render_template('logs.html', **(logs), **loginfo)
+
+@app.route("/setTime", methods=['GET', 'POST'])
+def set_time():
+    current_time = rtc_get()
+
+    templateData = {
+        'curr_SS' : current_time[0],
+        'curr_MM' : current_time[1],
+        'curr_HH' : current_time[2],
+        'curr_dd' : current_time[3],
+        'curr_mm' : current_time[4],
+        'curr_yy' : current_time[5]
+    }
+
+    if request.method == 'POST':
+        new_SS = request.form['new_SS'] #Do I need to cast to int?
+        new_MM = request.form['new_MM']
+        new_HH = request.form['new_HH']
+        new_dd = request.form['new_dd']
+        new_mm = request.form['new_mm']
+        new_yy = request.form['new_yy']
+
+        #TODO how do I want to check formatting and stuff?
+        if new_SS == 'none':
+            
+
+    return render_template('setTime.html', **templateData)
+
 @app.after_request
 def add_header(r):
     """
     Description
     -----------
-    This function prevents sensor data from being stored by the browser. This is in place because some sensor data was being loaded from local caches rather than taking data in real-time from the sensor. 
-    
+    This function prevents sensor data from being stored by the browser. This is in place because some sensor data was being loaded from local caches rather than taking data in real-time from the sensor.
+
     Parameters
     ----------
     None
-             
+
     Returns
     -------
-    
+
     Examples
-    --------  
-    
+    --------
+
     Change Log
     ----------
-    
+
     Authors
     -------
     Taylor Zinke: Taylor.Zinke@lynntech.com
-    
+
     Notes
     -----
-    """ 
+    """
 
 
     r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -303,5 +332,5 @@ if __name__ == "__main__":
     #pin 10 is ~btn_rdy LED and pin 7 is the button
     #GPIO.setup(19, GPIO.IN)
     #GPIO.add_event_detect(19, GPIO.BOTH, callback=exposure_timestamp)
-    
+
     app.run(host=ip, port=server_port, debug=True, use_reloader=True)

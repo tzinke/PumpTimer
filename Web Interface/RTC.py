@@ -1,12 +1,28 @@
-#Does the RTC really store time bytes as 40x, 20x, 10x, 8x, 4x, 2x, 1x? Need to test
-#If so, how does it store values that have two possible representations (15 = x000 1111 or x001 0101)?
+def rtc_set(time_string):
+    """
+    Description
+    -----------
+    This function writes to the registers of the RTC
 
-def rtc_set():
-    print("Closely watch an adequate time source")
-    print("Using the format \"yyyy mm dd HH MM SS\" (24-hour time), enter a time a few seconds into the future. When the entered time is reached, press enter immediately.")
-    entry = input("Time to set: ")
-    #Why did I do it like this?
-    currtime = datetime.datetime.strptime(entry, "%Y %m %d %H %M %S")
+    Parameters
+    ----------
+    time_string: String with the current 24-hour time formatted as
+        "yyyy mm dd HH MM SS"
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+
+    Change Log
+    ----------
+
+    Notes
+    -----
+    """
+    currtime = datetime.datetime.strptime(time_string, "%Y %m %d %H %M %S")
 
     second= (int(currtime.second /10) * 16) + (currtime.second % 10)
     minute = (int(currtime.minute /10) * 16) + (currtime.minute % 10)
@@ -17,11 +33,31 @@ def rtc_set():
     year = (int(y /10) * 16) + (y % 10)
 
     bus.write_i2c_block_data(address, 0, [second, minute, hour, 1, day, month, year])
-    
-def rtc_get():
-    sec = bus.read_i2c_data(address)
 
-    '''
+def rtc_get():
+    """
+    Description
+    -----------
+    This function reads from the registers of the RTC and sets the system time
+        accordingly.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    A list containing the current RTC setting
+
+    Examples
+    --------
+
+    Change Log
+    ----------
+
+    Notes
+    -----
+    """
     regs = bus.read_i2c_block_data(address, 0, 7)
 
     seconds = "%d" % ((int(regs[0]/16) * 10) + (regs[0] % 16))
@@ -44,4 +80,5 @@ def rtc_get():
          year = "0" + year
 
     os.system("date -s \"20%s%s%s %s:%s:%s\"" % (year, month, day, hours, minutes, seconds))
-    '''
+
+    return [second, minute, hour, day, month, year]
