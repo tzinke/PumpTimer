@@ -38,6 +38,7 @@ import json
 import subprocess
 from flask import Flask, render_template, request, jsonify, send_file
 import RTC
+import PumpTimer
 
 ##################################################################################################
 # # Global Variables
@@ -70,6 +71,9 @@ sched_off = 0
 single_on = 0
 single_off = 0
 
+#I2C address of the pressure transducer
+pt_addr = 0x28
+
 sensors = {
     1 : {'name' : 'Time', 'data' : 'None'},
     2 : {'name' : 'Flow', 'data' : 'None'}
@@ -91,26 +95,26 @@ app = Flask(__name__)
 def startPump():
     #GPIO 18 high for 15ms
     gpio.output(18, 1)
-
+    time.sleep(0.015)
     gpio.output(18, 0)
     pass
 
 def stopPump():
     #GPIO14 high for 15ms
     gpio.output(14, 1)
-
+    time.sleep(0.015)
     gpio.output(14, 0)
     pass
 
-def synctime():
+def synctime(): #aka getRTC
     pass
 
 def setRTC():
     pass
 
-def readFlowMeter():
-    # Place holder to remind me
-    pass
+def readPressure():
+    #Not sure how to poll the device... no manual provided
+    curr_p = int(smbus.read_block_data(pt_addr, 0))
 
 @app.route("/")
 def main():
@@ -148,11 +152,12 @@ def main():
 
 @app.route("/setSchedule", methods=['GET', 'POST'])
 def setSchedule():
+    #Should I store this in a file on the SD card or in the RTC RAM?
     if request.method == 'POST':
         try:
             sched_on = int(request.form['scheduleon'])
             with open(sched_path, "r") as file:
-                file.readline() #Don't care about the old on-time
+                file.readline() #Do I care about the old on-time?
                 old_off = int(file.readline())
 
             with open(sched_path, "w") as file:
@@ -250,6 +255,7 @@ def logs():
     }
 
     #TODO how can I send a log's contents for viewing on the webpage?
+    #Put it in a multi-line string or just redirect the client to the log file on SD card?
     loginfo = {
     }
 
@@ -327,10 +333,10 @@ if __name__ == "__main__":
     #Configure GPIO
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
-    gpio.setup(18, gpio.OUT)
-    gpio.setup(14, gpio.OUT)
-    #pin 10 is ~btn_rdy LED and pin 7 is the button
-    #GPIO.setup(19, GPIO.IN)
-    #GPIO.add_event_detect(19, GPIO.BOTH, callback=exposure_timestamp)
+    GPIO.setup(18, GPIO.OUT) #set
+    GPIO.setup(14, GPIO.OUT) #reset
+    GPIO.setup(4, GPIO.IN) #pump-toggle button
+    GPIO.setup(15, GPIO.OUT) #~btn_rdy LED
+    GPIO.add_event_detect(4, GPIO.FALLING, callback=toggle_pump)
 
     app.run(host=ip, port=server_port, debug=True, use_reloader=True)
