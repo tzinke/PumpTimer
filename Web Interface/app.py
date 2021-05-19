@@ -34,11 +34,9 @@ import os
 import time
 import smbus
 import datetime
-import json
 import subprocess
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, send_file
 import RTC
-import PumpTimer
 from threading import Timer
 
 ##################################################################################################
@@ -46,7 +44,7 @@ from threading import Timer
 ##################################################################################################
 
 #Define the address and port this server will run on
-ip = "192.168.69.1"
+ip = "192.168.15.1"
 server_port = 5000
 
 #Schedule and log file paths
@@ -58,7 +56,7 @@ log_dir = "./static/logs/"
 log_path = null #Will get set to current date
 
 #State variables
-noflowantonio = False
+pressureFailure = False
 pump_timed_on = False
 pump_timed_off = True
 pump_scheduled = False
@@ -104,9 +102,6 @@ def stopPump():
     gpio.output(14, 1)
     time.sleep(0.015)
     gpio.output(14, 0)
-
-def setRTC():
-    pass
 
 def readPressure():
     #Not sure how to poll the device... no manual provided
@@ -302,7 +297,9 @@ def add_header(r):
     """
     Description
     -----------
-    This function prevents sensor data from being stored by the browser. This is in place because some sensor data was being loaded from local caches rather than taking data in real-time from the sensor.
+    This function prevents sensor data from being stored by the browser.
+    This is in place because some sensor data was being loaded from local
+    caches rather than taking data in real-time from the sensor.
 
     Parameters
     ----------
@@ -319,7 +316,6 @@ def add_header(r):
 
     Authors
     -------
-    Taylor Zinke: Taylor.Zinke@lynntech.com
 
     Notes
     -----
