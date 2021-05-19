@@ -39,6 +39,7 @@ import subprocess
 from flask import Flask, render_template, request, jsonify, send_file
 import RTC
 import PumpTimer
+from threading import Timer
 
 ##################################################################################################
 # # Global Variables
@@ -76,13 +77,13 @@ pt_addr = 0x28
 
 sensors = {
     1 : {'name' : 'Time', 'data' : 'None'},
-    2 : {'name' : 'Flow', 'data' : 'None'}
+    2 : {'name' : 'Pressure', 'data' : 'None'}
 }
 
 mode = {
     1 : {'name' : 'Button', 'data' : 'None'},
     1 : {'name' : 'Single', 'data' : 'None'},
-    1 : {'name' : 'Flow', 'data' : 'None'},
+    1 : {'name' : 'Pressure', 'data' : 'None'},
     2 : {'name' : 'Schedule', 'data' : 'None'}
 }
 
@@ -97,17 +98,12 @@ def startPump():
     gpio.output(18, 1)
     time.sleep(0.015)
     gpio.output(18, 0)
-    pass
 
 def stopPump():
     #GPIO14 high for 15ms
     gpio.output(14, 1)
     time.sleep(0.015)
     gpio.output(14, 0)
-    pass
-
-def synctime(): #aka getRTC
-    pass
 
 def setRTC():
     pass
@@ -115,6 +111,14 @@ def setRTC():
 def readPressure():
     #Not sure how to poll the device... no manual provided
     curr_p = int(smbus.read_block_data(pt_addr, 0))
+    #sensors[1] = ?
+    Timer(5, readPressure, ()).start()
+
+def checkTime():
+    #Check if the current time matches sched_on, sched_off, single_on, or single_off
+    #   and change pump state if necessary
+    sensors[0] = rtc_get()
+    Timer(5, checkTime, ()).start()
 
 @app.route("/")
 def main():
@@ -141,8 +145,6 @@ def main():
     Notes
     -----
     """
-    rtc_get()
-
     templateData = {
         'sensors' : sensors,
         #'mode' : ,
@@ -184,7 +186,8 @@ def setSchedule():
 
     templateData = {
         'curr_on' : sched_on,
-        'curr_off' : sched_off
+        'curr_off' : sched_off,
+        'curr_time' : sensors[0]
     }
 
     return render_template('setSchedule.html', **templateData)
@@ -339,4 +342,10 @@ if __name__ == "__main__":
     GPIO.setup(15, GPIO.OUT) #~btn_rdy LED
     GPIO.add_event_detect(4, GPIO.FALLING, callback=toggle_pump)
 
+    #Start the non-interface threads
+    readPressure()
+    time.sleep(2.5)
+    checkTime()
+
+    #Start the interface
     app.run(host=ip, port=server_port, debug=True, use_reloader=True)
