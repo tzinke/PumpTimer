@@ -57,12 +57,12 @@ log_path = null #Will get set to current date
 
 #State variables
 pressureFailure = False
-pump_timed_on = False
-pump_timed_off = True
+pump_on = False
 pump_scheduled = False
 pump_single_run = False
-pump_button_on = False
-pump_button_off = False
+lastEvent = "None" #Possible values: "button", "daily schedule", "single-run schedule", "pressure failure"
+cooldown = 0 #This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
+mutex = 0 #This is to prevent unwanted interactions between timer and button events
 
 #Schedule variables
 sched_on = 0
@@ -78,11 +78,12 @@ sensors = {
     2 : {'name' : 'Pressure', 'data' : 'None'}
 }
 
-mode = {
-    1 : {'name' : 'Button', 'data' : 'None'},
-    1 : {'name' : 'Single', 'data' : 'None'},
+#Should refine these. What might the user want to know?
+states = {
+    1 : {'name' : 'Last event', 'data' : 'None'},
+    1 : {'name' : 'Single set', 'data' : 'None'},
     1 : {'name' : 'Pressure', 'data' : 'None'},
-    2 : {'name' : 'Schedule', 'data' : 'None'}
+    2 : {'name' : 'Schedule set', 'data' : 'None'}
 }
 
 app = Flask(__name__)
@@ -92,28 +93,87 @@ app = Flask(__name__)
 ##################################################################################################
 
 def startPump():
-    #GPIO 18 high for 15ms
+    global pump_on
+    #GPIO18 high for 15ms
     gpio.output(18, 1)
     time.sleep(0.015)
     gpio.output(18, 0)
+    pump_on = True
+    
+    gpio.output(15, 1)
+    time.sleep(2)
+    gpio.output(15, 0)
 
 def stopPump():
+    global pump_on
     #GPIO14 high for 15ms
     gpio.output(14, 1)
     time.sleep(0.015)
     gpio.output(14, 0)
+    pump_on = False
+    
+    gpio.output(15, 1)
+    time.sleep(2)
+    gpio.output(15, 0)
+
+def toggle_pump():
+    global lastEvent, mutex
+    if mutex is 0:
+        mutex = 1
+        if pump_on is False:
+            startPump()
+        else:
+            stopPump()
+
+        mutex = 0
+        lastEvent = "button"
 
 def readPressure():
     #Not sure how to poll the device... no manual provided
     curr_p = int(smbus.read_block_data(pt_addr, 0))
     #sensors[1] = ?
-    Timer(5, readPressure, ()).start()
+    #Do I want to do some kind of sliding average or anything?
+    
+    #if pressure is below some threshold for some amount of time,
+    #   turn pump off and set error flag
+    Timer(3, readPressure, ()).start()
 
 def checkTime():
-    #Check if the current time matches sched_on, sched_off, single_on, or single_off
-    #   and change pump state if necessary
-    sensors[0] = rtc_get()
-    Timer(5, checkTime, ()).start()
+    global lastEvent, sensors
+    if mutex is 0:
+        mutex = 1
+        #Check if the current time matches sched_on, sched_off, single_on, or single_off
+        #   and change pump state if necessary
+        sensors[0] = rtc_get()
+        currtime = sensors[0][2]*100 + sensors[0][1]
+        
+        desired_pump_state = 0
+        #TODO I should probably set some state variable (to say pump on from sched)
+        #Using only if statements (no else or else-if) so default pump state is OFF
+        #   in case user enters the same time for on/off events
+        if currtime == sched_on:
+            desired_pump_state = 1
+            lastEvent = "daily schedule"
+        if currtime == sched_off:
+            desired_pump_state = 0
+            lastEvent = "daily schedule"
+            
+        #Separate logic statements (not or'd with the statements above)
+        #   to give preference to single-run schedules
+        if currtime == single_on:
+            desired_pump_state = 1
+            lastEvent = "signle-run schedule"
+        if currtime == single_off:
+            desired_pump_state = 0
+            lastEvent = "single-run schedule"
+        
+        if (desired_pump_state is 1) and (pump_on is False):
+            startPump()
+        else if (desired_pump_state is 0) and (pump_on is True):
+            stopPump()
+            
+        mutex = 0
+        Timer(3, checkTime, ()).start()
 
 @app.route("/")
 def main():
@@ -142,7 +202,7 @@ def main():
     """
     templateData = {
         'sensors' : sensors,
-        #'mode' : ,
+        'states' : states
         }
     # Pass the template data into the template main.html and return it to the user
     return render_template('main.html', **templateData)
@@ -340,7 +400,7 @@ if __name__ == "__main__":
 
     #Start the non-interface threads
     readPressure()
-    time.sleep(2.5)
+    time.sleep(1.5)
     checkTime()
 
     #Start the interface
