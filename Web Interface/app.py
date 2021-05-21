@@ -63,6 +63,7 @@ pump_single_run = False
 lastEvent = "None" #Possible values: "button", "daily schedule", "single-run schedule", "pressure failure"
 cooldown = 0 #This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
 mutex = 0 #This is to prevent unwanted interactions between timer and button events
+pt_task_running = 0
 
 #Schedule variables
 sched_on = 0
@@ -93,28 +94,30 @@ app = Flask(__name__)
 ##################################################################################################
 
 def startPump():
-    global pump_on
-    #GPIO18 high for 15ms
-    gpio.output(18, 1)
-    time.sleep(0.015)
-    gpio.output(18, 0)
-    pump_on = True
-    
-    gpio.output(15, 1)
-    time.sleep(2)
-    gpio.output(15, 0)
+    global pump_on, cooldown
+    if cooldown is 0:
+        #GPIO18 high for 15ms
+        gpio.output(18, 1)
+        time.sleep(0.015)
+        gpio.output(18, 0)
+        pump_on = True
+        
+        gpio.output(15,1)
+        cooldown = 1
+        Timer(3, cooldown_counter, ()).start()
 
 def stopPump():
-    global pump_on
-    #GPIO14 high for 15ms
-    gpio.output(14, 1)
-    time.sleep(0.015)
-    gpio.output(14, 0)
-    pump_on = False
-    
-    gpio.output(15, 1)
-    time.sleep(2)
-    gpio.output(15, 0)
+    global pump_on, cooldown
+    if cooldown is 0:
+        #GPIO14 high for 15ms
+        gpio.output(14, 1)
+        time.sleep(0.015)
+        gpio.output(14, 0)
+        pump_on = False
+        
+        gpio.output(15,1)
+        cooldown = 1
+        Timer(3, cooldown_counter, ()).start()
 
 def toggle_pump():
     global lastEvent, mutex
@@ -128,6 +131,11 @@ def toggle_pump():
         mutex = 0
         lastEvent = "button"
 
+def cooldown_counter():
+    global cooldown
+    cooldown = 0
+    gpio.output(15,0)
+
 def readPressure():
     #Not sure how to poll the device... no manual provided
     curr_p = int(smbus.read_block_data(pt_addr, 0))
@@ -136,19 +144,29 @@ def readPressure():
     
     #if pressure is below some threshold for some amount of time,
     #   turn pump off and set error flag
-    Timer(3, readPressure, ()).start()
+    timer_pt = Timer(3, readPressure, ())
+    timer_pt.start()
 
 def checkTime():
-    global lastEvent, sensors
+    global mutex, sensors, pt_task_running, lastEvent
     if mutex is 0:
         mutex = 1
         #Check if the current time matches sched_on, sched_off, single_on, or single_off
         #   and change pump state if necessary
         sensors[0] = rtc_get()
         currtime = sensors[0][2]*100 + sensors[0][1]
+
+        drift = sensors[0][0] #Subtract out the seconds from timer delay so this happens on the minute
+        #Correcting for drift means timer_clock and timer_pt can coincide.
+        #   If drift-correction is needed, I need to adjust the timer_pt offset
+        #TODO what function will delay timer_pt the least but guarantees that it fires 1.5s after 
+        #   (60 - drift) without being too complex?
+        if drift is not 0:
+            timer_pt.cancel()
+            timer_pt = Timer( , readPressure, ())
+            timer_pt.start()
         
         desired_pump_state = 0
-        #TODO I should probably set some state variable (to say pump on from sched)
         #Using only if statements (no else or else-if) so default pump state is OFF
         #   in case user enters the same time for on/off events
         if currtime == sched_on:
@@ -162,7 +180,7 @@ def checkTime():
         #   to give preference to single-run schedules
         if currtime == single_on:
             desired_pump_state = 1
-            lastEvent = "signle-run schedule"
+            lastEvent = "single-run schedule"
         if currtime == single_off:
             desired_pump_state = 0
             lastEvent = "single-run schedule"
@@ -173,7 +191,8 @@ def checkTime():
             stopPump()
             
         mutex = 0
-        Timer(3, checkTime, ()).start()
+        timer_clock = Timer(60 - drift, checkTime, ())
+        timer_clock.start()
 
 @app.route("/")
 def main():
@@ -199,7 +218,7 @@ def main():
 
     Notes
     -----
-    """
+    """    
     templateData = {
         'sensors' : sensors,
         'states' : states
@@ -398,10 +417,12 @@ if __name__ == "__main__":
     GPIO.setup(15, GPIO.OUT) #~btn_rdy LED
     GPIO.add_event_detect(4, GPIO.FALLING, callback=toggle_pump)
 
-    #Start the non-interface threads
-    readPressure()
-    time.sleep(1.5)
-    checkTime()
+    #Start the non-interface threads 1.5s apart so they never coincide
+    #   Clock timer interval = 60s; pressure timer interval = 3s
+    timer_clock = Timer(0.1, readPressure, ())
+    timer_pt = Timer(1.6, checkTime, ())
+    timer_clock.start()
+    timer_pt.start()
 
     #Start the interface
     app.run(host=ip, port=server_port, debug=True, use_reloader=True)
