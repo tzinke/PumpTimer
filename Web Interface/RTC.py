@@ -32,7 +32,7 @@ def rtc_set(time_string):
     y = currtime.year - 2000
     year = (int(y /10) * 16) + (y % 10)
 
-    bus.write_i2c_block_data(address, 0, [second, minute, hour, 1, day, month, year])
+    bus.write_i2c_block_data(0x32, 0, [second, minute, hour, 1, day, month, year])
 
 def rtc_get():
     """
@@ -58,7 +58,7 @@ def rtc_get():
     Notes
     -----
     """
-    regs = bus.read_i2c_block_data(address, 0, 7)
+    regs = bus.read_i2c_block_data(0x32, 0, 7)
 
     seconds = "%d" % ((int(regs[0]/16) * 10) + (regs[0] % 16))
     if int(seconds) < 10:
@@ -80,5 +80,6 @@ def rtc_get():
          year = "0" + year
 
     os.system("date -s \"20%s%s%s %s:%s:%s\"" % (year, month, day, hours, minutes, seconds))
+    print("20%s%s%s %s:%s:%s" % (year, month, day, hours, minutes, seconds))
 
-    return [second, minute, hour, day, month, year]
+    return [seconds, minutes, hours, day, month, year]

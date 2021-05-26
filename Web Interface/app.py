@@ -71,7 +71,8 @@ sched_off = 0
 single_on = 0
 single_off = 0
 
-#I2C address of the pressure transducer
+#I2C variables
+bus = smbus.SMBus(1)
 pt_addr = 0x28
 
 sensors = {
