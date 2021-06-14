@@ -122,15 +122,17 @@ def stopPump():
 
 def toggle_pump():
     global lastEvent, mutex
-    if mutex is 0:
-        mutex = 1
-        if pump_on is False:
-            startPump()
-        else:
-            stopPump()
+    
+    while(1 == mutex): pass
+    
+    mutex = 1
+    if pump_on is False:
+        startPump()
+    else:
+        stopPump()
 
-        mutex = 0
-        lastEvent = "button"
+    mutex = 0
+    lastEvent = "button"
 
 def cooldown_counter():
     global cooldown
@@ -420,10 +422,10 @@ if __name__ == "__main__":
 
     #Start the non-interface threads 1.5s apart so they never coincide
     #   Clock timer interval = 60s; pressure timer interval = 3s
-    timer_clock = Timer(0.1, readPressure, ())
-    timer_pt = Timer(1.6, checkTime, ())
+    timer_clock = Timer(0.1, checkTime, ())
+    #timer_pt = Timer(1.6, readPressure, ())
     timer_clock.start()
-    timer_pt.start()
+    #timer_pt.start()
 
     #Start the interface
     app.run(host=ip, port=server_port, debug=True, use_reloader=True)
