@@ -28,6 +28,7 @@ Pressure transducer operations are commented out for now until the sensor is ins
 '''
 
 #TODO go through functions and make sure global variables are declared global
+#TODO use performance timer to check PT drift correction against using modulus
 
 ##################################################################################################
 # # Imports
@@ -156,7 +157,7 @@ def readPressure():
     #timer_pt.start()
 
 def checkTime():
-    global mutex, sensors, pt_task_running, lastEvent, currtime
+    global mutex, sensors, pt_task_running, lastEvent, currtime, single_run_pending
     if mutex is 0:
         mutex = 1
         #Check if the current time matches sched_on, sched_off, single_on, or single_off
@@ -240,19 +241,22 @@ def main():
 @app.route("/setSchedule", methods=['GET', 'POST'])
 def setSchedule():
     #Should I store this in a file on the SD card or in the RTC RAM?
+    #TODO figure out the on-off state with new schedules. What about a schedule that wraps around midnight?
     if request.method == 'POST':
+        desired_pump_state = 0
         try:
             sched_on = int(request.form['scheduleon'])
             with open(sched_path, "r") as file:
-                file.readline() #Do I care about the old on-time?
+                file.readline()
                 old_off = int(file.readline())
 
             with open(sched_path, "w") as file:
                 file.write(sched_on)
                 file.write(old_off)
 
-            if currtime >= sched_on:
-                startPump()
+            if not pump_on:
+                if (currtime >= sched_on) and (currtime < (sched_off - 1)):
+                    desired_pump_state = 1
         except:
             pass
 
@@ -264,8 +268,10 @@ def setSchedule():
             with open(sched_path, "w") as file:
                 file.write(old_on)
                 file.write(sched_off)
-            if currtime >= sched_off:
-                stopPump()
+     
+            if pump_on:
+                if (currtime < sched_on) and (currtime >= sched_off):
+                    desired_pump_state = 0
         except:
             pass
 
@@ -280,32 +286,14 @@ def setSchedule():
 #TODO match variable names
 @app.route("/setSingle", methods=['GET', 'POST'])
 def setSingle():
+    #TODO figure out the on-off state with new schedules. What about a schedule that wraps around midnight?
     if request.method == 'POST':
         try:
-            sched_on = int(request.form['scheduleon'])
-            with open(sched_path, "r") as file:
-                file.readline() #Do I care about the old on-time?
-                old_off = int(file.readline())
+            single_on = int(request.form['singleon'])
+            single_off = int(request.form['singleoff'])
 
-            with open(sched_path, "w") as file:
-                file.write(sched_on)
-                file.write(old_off)
-
-            if currtime >= sched_on:
+            if currtime >= single_on:
                 startPump()
-        except:
-            pass
-
-        try:
-            sched_off = int(request.form['scheduleoff'])
-            with open(sched_path, "r") as file:
-                old_on = int(file.readline())
-
-            with open(sched_path, "w") as file:
-                file.write(old_on)
-                file.write(sched_off)
-            if currtime >= sched_off:
-                stopPump()
         except:
             pass
 
