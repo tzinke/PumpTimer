@@ -23,8 +23,11 @@ fetch_log:
 
 Change Log
 ----------
+Pressure transducer operations are commented out for now until the sensor is installed.
 
 '''
+
+#TODO go through functions and make sure global variables are declared global
 
 ##################################################################################################
 # # Imports
@@ -70,6 +73,8 @@ sched_on = 0
 sched_off = 0
 single_on = 0
 single_off = 0
+#Don't want single-run settings to remain active after completing once
+single_run_pending = 0 #0 = not pending; 1 = pending
 
 #I2C variables
 bus = smbus.SMBus(1)
@@ -123,7 +128,7 @@ def stopPump():
 def toggle_pump():
     global lastEvent, mutex
     
-    while(1 == mutex): pass
+    while(mutex is 1): pass
     
     mutex = 1
     if pump_on is False:
@@ -147,11 +152,11 @@ def readPressure():
     
     #if pressure is below some threshold for some amount of time,
     #   turn pump off and set error flag
-    timer_pt = Timer(3, readPressure, ())
-    timer_pt.start()
+    #timer_pt = Timer(3, readPressure, ())
+    #timer_pt.start()
 
 def checkTime():
-    global mutex, sensors, pt_task_running, lastEvent
+    global mutex, sensors, pt_task_running, lastEvent, currtime
     if mutex is 0:
         mutex = 1
         #Check if the current time matches sched_on, sched_off, single_on, or single_off
@@ -159,19 +164,20 @@ def checkTime():
         sensors[0] = rtc_get()
         currtime = sensors[0][2]*100 + sensors[0][1]
 
-        drift = sensors[0][0] #Subtract out the seconds from timer delay so this happens on the minute
+        drift_correction = 60 - sensors[0][0] #Subtract out the seconds from timer delay so this happens on the minute
         #Correcting for drift means timer_clock and timer_pt can coincide.
-        #   If drift-correction is needed, I need to adjust the timer_pt offset
-        #TODO what function will delay timer_pt the least but guarantees that it fires 1.5s after 
-        #   (60 - drift) without being too complex?
-        if drift is not 0:
+        #   If drift-correction is needed, I need to delay timer_pt such that it will still be 1.5s off
+        '''
+        if drift_correction is not 0:
             timer_pt.cancel()
-            timer_pt = Timer( , readPressure, ())
+            div = drift_correction / 1.5
+            mod = div - int(div)
+            timer_pt = Timer(1.5 * mod, readPressure, ())
             timer_pt.start()
+        '''
         
         desired_pump_state = 0
-        #Using only if statements (no else or else-if) so default pump state is OFF
-        #   in case user enters the same time for on/off events
+        #Using only if statements (no else or else-if) so time-collisions will result in pump state OFF
         if currtime == sched_on:
             desired_pump_state = 1
             lastEvent = "daily schedule"
@@ -181,12 +187,14 @@ def checkTime():
             
         #Separate logic statements (not or'd with the statements above)
         #   to give preference to single-run schedules
-        if currtime == single_on:
-            desired_pump_state = 1
-            lastEvent = "single-run schedule"
-        if currtime == single_off:
-            desired_pump_state = 0
-            lastEvent = "single-run schedule"
+        if single_run_pending is 1:
+            if currtime == single_on:
+                desired_pump_state = 1
+                lastEvent = "single-run schedule"
+            if currtime == single_off:
+                desired_pump_state = 0
+                single_run_pending = 0 #single-run schedule finished
+                lastEvent = "single-run schedule"
         
         if (desired_pump_state is 1) and (pump_on is False):
             startPump()
@@ -194,7 +202,7 @@ def checkTime():
             stopPump()
             
         mutex = 0
-        timer_clock = Timer(60 - drift, checkTime, ())
+        timer_clock = Timer(drift_correction, checkTime, ())
         timer_clock.start()
 
 @app.route("/")
@@ -243,7 +251,7 @@ def setSchedule():
                 file.write(sched_on)
                 file.write(old_off)
 
-            if curr_time >= sched_on:
+            if currtime >= sched_on:
                 startPump()
         except:
             pass
@@ -256,7 +264,7 @@ def setSchedule():
             with open(sched_path, "w") as file:
                 file.write(old_on)
                 file.write(sched_off)
-            if curr_time >= sched_off:
+            if currtime >= sched_off:
                 stopPump()
         except:
             pass
@@ -264,7 +272,47 @@ def setSchedule():
     templateData = {
         'curr_on' : sched_on,
         'curr_off' : sched_off,
-        'curr_time' : sensors[0]
+        'currtime' : sensors[0]
+    }
+
+    return render_template('setSchedule.html', **templateData)
+
+#TODO match variable names
+@app.route("/setSingle", methods=['GET', 'POST'])
+def setSingle():
+    if request.method == 'POST':
+        try:
+            sched_on = int(request.form['scheduleon'])
+            with open(sched_path, "r") as file:
+                file.readline() #Do I care about the old on-time?
+                old_off = int(file.readline())
+
+            with open(sched_path, "w") as file:
+                file.write(sched_on)
+                file.write(old_off)
+
+            if currtime >= sched_on:
+                startPump()
+        except:
+            pass
+
+        try:
+            sched_off = int(request.form['scheduleoff'])
+            with open(sched_path, "r") as file:
+                old_on = int(file.readline())
+
+            with open(sched_path, "w") as file:
+                file.write(old_on)
+                file.write(sched_off)
+            if currtime >= sched_off:
+                stopPump()
+        except:
+            pass
+
+    templateData = {
+        'curr_on' : sched_on,
+        'curr_off' : sched_off,
+        'currtime' : sensors[0]
     }
 
     return render_template('setSchedule.html', **templateData)
