@@ -29,8 +29,7 @@ def rtc_set(time_string):
     hour = (int(currtime.hour /10) * 16) + (currtime.hour % 10)
     day = (int(currtime.day /10) * 16) + (currtime.day % 10)
     month = (int(currtime.month /10) * 16) + (currtime.month % 10)
-    y = currtime.year - 2000
-    year = (int(y /10) * 16) + (y % 10)
+    year = (int(currtime.year /10) * 16) + (currtime.year % 10)
 
     bus.write_i2c_block_data(0x32, 0, [second, minute, hour, 1, day, month, year])
 

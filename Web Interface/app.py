@@ -13,7 +13,7 @@ Function: top-level description
 
 set_schedule:
 
-set_single:
+set_one_time:
 
 set_time:
 
@@ -52,10 +52,10 @@ ip = "192.168.15.1"
 server_port = 5000
 
 #Schedule and log file paths
-#Schedules are written to files so the timer can resume
-#   the schedule in case of temporary power outage
+#Schedule is written to file so the timer can resume
+#   the schedule in case of power outage
+#   One-time schedules will be lost in power outage
 sched_path = "./static/schedule"
-single_path = "./static/single"
 log_dir = "./static/logs/"
 log_path = null #Will get set to current date
 
@@ -63,8 +63,8 @@ log_path = null #Will get set to current date
 pressureFailure = False
 pump_on = False
 pump_scheduled = False
-pump_single_run = False
-lastEvent = "None" #Possible values: "button", "daily schedule", "single-run schedule", "pressure failure"
+pump_one_time_run = False
+lastEvent = "None" #Possible values: "button", "daily schedule", "one_time-run schedule", "pressure failure"
 cooldown = 0 #This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
 mutex = 0 #This is to prevent unwanted interactions between timer and button events
 pt_task_running = 0
@@ -72,10 +72,10 @@ pt_task_running = 0
 #Schedule variables
 sched_on = 0
 sched_off = 0
-single_on = 0
-single_off = 0
-#Don't want single-run settings to remain active after completing once
-single_run_pending = 0 #0 = not pending; 1 = pending
+one_time_on = 0
+one_time_off = 0
+#Don't want one-time-run settings to remain active after completing
+one_time_run_pending = 0 #0 = not pending; 1 = pending
 
 #I2C variables
 bus = smbus.SMBus(1)
@@ -89,7 +89,7 @@ sensors = {
 #Should refine these. What might the user want to know?
 states = {
     1 : {'name' : 'Last event', 'data' : 'None'},
-    1 : {'name' : 'Single set', 'data' : 'None'},
+    1 : {'name' : 'one_time set', 'data' : 'None'},
     1 : {'name' : 'Pressure', 'data' : 'None'},
     2 : {'name' : 'Schedule set', 'data' : 'None'}
 }
@@ -157,26 +157,26 @@ def readPressure():
     #timer_pt.start()
 
 def checkTime():
-    global mutex, sensors, pt_task_running, lastEvent, currtime, single_run_pending
+    global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_run_pending
+    #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
+    #   and change pump state if necessary
+    sensors[0] = rtc_get()
+    currtime = sensors[0][2]*100 + sensors[0][1]
+
+    drift_correction = 60 - sensors[0][0] #Subtract out the seconds from timer delay so this happens on the minute
+    #Correcting for drift means timer_clock and timer_pt can coincide.
+    #   If drift-correction is needed, I need to delay timer_pt such that it will still be 1.5s off
+    '''
+    if drift_correction is not 0:
+        timer_pt.cancel()
+        div = drift_correction / 1.5
+        mod = div - int(div)
+        timer_pt = Timer(1.5 * mod, readPressure, ())
+        timer_pt.start()
+    '''
+        
     if mutex is 0:
         mutex = 1
-        #Check if the current time matches sched_on, sched_off, single_on, or single_off
-        #   and change pump state if necessary
-        sensors[0] = rtc_get()
-        currtime = sensors[0][2]*100 + sensors[0][1]
-
-        drift_correction = 60 - sensors[0][0] #Subtract out the seconds from timer delay so this happens on the minute
-        #Correcting for drift means timer_clock and timer_pt can coincide.
-        #   If drift-correction is needed, I need to delay timer_pt such that it will still be 1.5s off
-        '''
-        if drift_correction is not 0:
-            timer_pt.cancel()
-            div = drift_correction / 1.5
-            mod = div - int(div)
-            timer_pt = Timer(1.5 * mod, readPressure, ())
-            timer_pt.start()
-        '''
-        
         desired_pump_state = 0
         #Using only if statements (no else or else-if) so time-collisions will result in pump state OFF
         if currtime == sched_on:
@@ -187,15 +187,16 @@ def checkTime():
             lastEvent = "daily schedule"
             
         #Separate logic statements (not or'd with the statements above)
-        #   to give preference to single-run schedules
-        if single_run_pending is 1:
-            if currtime == single_on:
+        #   to give preference to one_time-run schedules
+        if one_time_run_pending is 1:
+            if currtime == one_time_on:
                 desired_pump_state = 1
-                lastEvent = "single-run schedule"
-            if currtime == single_off:
+                lastEvent = "one_time-run schedule"
+            if currtime == one_time_off:
                 desired_pump_state = 0
-                single_run_pending = 0 #single-run schedule finished
-                lastEvent = "single-run schedule"
+                one_time_run_pending = 0 #one_time-run schedule finished
+                one_time_on = one_time_off = 0
+                lastEvent = "one_time-run schedule"
         
         if (desired_pump_state is 1) and (pump_on is False):
             startPump()
@@ -203,8 +204,8 @@ def checkTime():
             stopPump()
             
         mutex = 0
-        timer_clock = Timer(drift_correction, checkTime, ())
-        timer_clock.start()
+    timer_clock = Timer(drift_correction, checkTime, ())
+    timer_clock.start()
 
 @app.route("/")
 def main():
@@ -234,18 +235,25 @@ def main():
     templateData = {
         'sensors' : sensors,
         'states' : states
-        }
+    }
     # Pass the template data into the template main.html and return it to the user
     return render_template('main.html', **templateData)
 
 @app.route("/setSchedule", methods=['GET', 'POST'])
 def setSchedule():
-    #Should I store this in a file on the SD card or in the RTC RAM?
-    #TODO figure out the on-off state with new schedules. What about a schedule that wraps around midnight?
+    global sched_off, sched_on
     if request.method == 'POST':
-        desired_pump_state = 0
         try:
-            sched_on = int(request.form['scheduleon'])
+            on_hh = int(request.form['on_hh'])
+            on_mm = int(request.form['on_mm'])
+            
+            if (23 < on_hh) or (0 > on_hh):
+                raise TypeError("HOUR: You must enter an integer between 0 and 23")
+            else if(59 < on_mm) or (0 > on_mm):
+                raise TypeError("MINUTE: You must enter an integer between 0 and 59")
+                
+            sched_on = (on_hh * 100) + on_mm
+            
             with open(sched_path, "r") as file:
                 file.readline()
                 old_off = int(file.readline())
@@ -253,27 +261,37 @@ def setSchedule():
             with open(sched_path, "w") as file:
                 file.write(sched_on)
                 file.write(old_off)
-
-            if not pump_on:
-                if (currtime >= sched_on) and (currtime < (sched_off - 1)):
-                    desired_pump_state = 1
         except:
             pass
 
         try:
-            sched_off = int(request.form['scheduleoff'])
+            off_hh = int(request.form['off_hh'])
+            off_mm = int(request.form['off_mm'])
+            
+            if (23 < off_hh) or (0 > off_hh):
+                raise TypeError("HOUR: You must enter an integer between 0 and 23")
+            else if(59 < off_mm) or (0 > off_mm):
+                raise TypeError("MINUTE: You must enter an integer between 0 and 59")
+                
+            sched_on = (off_hh * 100) + off_mm
+            
             with open(sched_path, "r") as file:
                 old_on = int(file.readline())
 
             with open(sched_path, "w") as file:
                 file.write(old_on)
                 file.write(sched_off)
-     
-            if pump_on:
-                if (currtime < sched_on) and (currtime >= sched_off):
-                    desired_pump_state = 0
         except:
             pass
+
+        if sched_off < sched_on: #Wrap through midnight
+            if (currtime >= sched_on) or (currtime < sched_off):
+                startPump()
+        else if sched_off > sched_on:
+            if (currtime >= sched_on) and (currtime < sched_off):
+                startPump()
+        else: #sched_off is the same as sched_on
+            stopPump()
 
     templateData = {
         'curr_on' : sched_on,
@@ -284,26 +302,58 @@ def setSchedule():
     return render_template('setSchedule.html', **templateData)
 
 #TODO match variable names
-@app.route("/setSingle", methods=['GET', 'POST'])
-def setSingle():
-    #TODO figure out the on-off state with new schedules. What about a schedule that wraps around midnight?
+@app.route("/setOneTime", methods=['GET', 'POST'])
+def set_one_time_run():
+    global one_time_off, one_time_on
     if request.method == 'POST':
         try:
-            single_on = int(request.form['singleon'])
-            single_off = int(request.form['singleoff'])
+            on_hh = int(request.form['on_hh'])
+            off_hh = int(request.form['off_hh'])
+            on_mm = int(request.form['on_mm'])
+            off_mm = int(request.form['off_mm'])
+            
+            if (23 < on_hh) or (23 < off_hh) or (0 > on_hh) or (0 > off_hh):
+                raise TypeError("HOUR: You must enter an integer between 0 and 23")
+            else if(59 < on_mm) or (59 < off_mm) or (0 > on_mm) or (0 > off_mm):
+                raise TypeError("MINUTE: You must enter an integer between 0 and 59")
+                
+            one_time_on = (on_hh * 100) + on_mm
+            one_time_off = (off_hh * 100) + off_mm
+        except: #One of the times entered was not a valid integer
+            one_time_on = 0
+            one_time_off = 0
 
-            if currtime >= single_on:
+        one_time_run_pending = 1
+        if one_time_off < one_time_on: #Wrap through midnight
+            if (currtime >= one_time_on) or (currtime < one_time_off):
                 startPump()
-        except:
-            pass
-
+                one_time_run_pending = 0
+        else if one_time_off > one_time_on:
+            if (currtime >= one_time_on) and (currtime < one_time_off):
+                startPump()
+                one_time_run_pending = 0
+        else: #sched_off is the same as sched_on
+            stopPump()
+            
     templateData = {
-        'curr_on' : sched_on,
-        'curr_off' : sched_off,
+        'curr_on' : one_time_on,
+        'curr_off' : one_time_off,
         'currtime' : sensors[0]
     }
 
-    return render_template('setSchedule.html', **templateData)
+    return render_template('setOneTime.html', **templateData)
+    
+@app.route("/toggle")
+def appToggle():
+    toggle_pump()
+    lastEvent = "Toggled via web"
+    
+    templateData = {
+        'sensors' : sensors,
+        'states' : states
+    }
+    # Pass the template data into the template main.html and return it to the user
+    return render_template('main.html', **templateData)
 
 @app.route("/downloadLog")
 def download():
@@ -388,25 +438,34 @@ def set_time():
     current_time = rtc_get()
 
     templateData = {
-        'curr_SS' : current_time[0],
-        'curr_MM' : current_time[1],
-        'curr_HH' : current_time[2],
-        'curr_dd' : current_time[3],
-        'curr_mm' : current_time[4],
-        'curr_yy' : current_time[5]
+        'curr_time' : sensors[0]
     }
 
     if request.method == 'POST':
-        new_SS = request.form['new_SS'] #Do I need to cast to int?
-        new_MM = request.form['new_MM']
-        new_HH = request.form['new_HH']
-        new_dd = request.form['new_dd']
-        new_mm = request.form['new_mm']
-        new_yy = request.form['new_yy']
+        try:
+            new_SS = int(request.form['new_SS'])
+            new_MM = int(request.form['new_MM'])
+            new_HH = int(request.form['new_HH'])
+            new_dd = int(request.form['new_dd'])
+            new_mm = int(request.form['new_mm'])
+            new_yy = int(request.form['new_yy'])
 
-        #TODO how do I want to check formatting and stuff?
-        if new_SS == 'none':
-            
+            if (59 < new_SS) or (0 > new_SS):
+                raise TypeError("SECOND: You must enter an integer between 0 and 59")
+            else if(59 < new_MM) or (0 > new_MM):
+                raise TypeError("MINUTE: You must enter an integer between 0 and 59")
+            else if(23 < new_HH) or (0 > new_HH):
+                raise TypeError("HOUR: You must enter an integer between 0 and 23")
+            else if(31 < new_dd) or (0 > new_dd):
+                raise TypeError("DAY: You must enter an integer between 0 and 31")
+            else if(12 < new_mm) or (0 > new_mm):
+                raise TypeError("MONTH: You must enter an integer between 0 and 12")
+            else if(99 < new_yy) or (0 > new_yy):
+                raise TypeError("YEAR: You must enter an integer between 0 and 99")
+                
+            rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
+        except:
+            pass
 
     return render_template('setTime.html', **templateData)
 
