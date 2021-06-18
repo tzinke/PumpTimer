@@ -65,6 +65,7 @@ pump_on = False
 pump_scheduled = False
 pump_one_time_run = False
 lastEvent = "None" #Possible values: "button", "daily schedule", "one_time-run schedule", "pressure failure"
+lastEventTime = 0
 cooldown = 0 #This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
 mutex = 0 #This is to prevent unwanted interactions between timer and button events
 pt_task_running = 0
@@ -139,6 +140,7 @@ def toggle_pump():
 
     mutex = 0
     lastEvent = "button"
+    lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
 
 def cooldown_counter():
     global cooldown
@@ -200,8 +202,10 @@ def checkTime():
         
         if (desired_pump_state is 1) and (pump_on is False):
             startPump()
+            lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
         else if (desired_pump_state is 0) and (pump_on is True):
             stopPump()
+            lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
             
         mutex = 0
     timer_clock = Timer(drift_correction, checkTime, ())
@@ -234,7 +238,13 @@ def main():
     """    
     templateData = {
         'sensors' : sensors,
-        'states' : states
+        'last' : lastEvent,
+        'lastEventTime' : lastEventTime,
+        'sched_on' : sched_on,
+        'sched_off' : sched_off,
+        'one_time_on' : one_time_on,
+        'one_time_off' : one_time_off,
+        'pump_state' : pump_on
     }
     # Pass the template data into the template main.html and return it to the user
     return render_template('main.html', **templateData)
@@ -287,10 +297,16 @@ def setSchedule():
         if sched_off < sched_on: #Wrap through midnight
             if (currtime >= sched_on) or (currtime < sched_off):
                 startPump()
+                lastEvent = "daily schedule"
+                lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
         else if sched_off > sched_on:
             if (currtime >= sched_on) and (currtime < sched_off):
                 startPump()
+                lastEvent = "daily schedule"
+                lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
         else: #sched_off is the same as sched_on
+            lastEvent = "daily schedule"
+            lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
             stopPump()
 
     templateData = {
@@ -327,12 +343,18 @@ def set_one_time_run():
         if one_time_off < one_time_on: #Wrap through midnight
             if (currtime >= one_time_on) or (currtime < one_time_off):
                 startPump()
+                lastEvent = "one-time schedule"
+                lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
                 one_time_run_pending = 0
         else if one_time_off > one_time_on:
             if (currtime >= one_time_on) and (currtime < one_time_off):
                 startPump()
+                lastEvent = "one-time schedule"
+                lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
                 one_time_run_pending = 0
         else: #sched_off is the same as sched_on
+            lastEvent = "one-time schedule"
+            lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
             stopPump()
             
     templateData = {
@@ -347,13 +369,10 @@ def set_one_time_run():
 def appToggle():
     toggle_pump()
     lastEvent = "Toggled via web"
+    lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
     
-    templateData = {
-        'sensors' : sensors,
-        'states' : states
-    }
-    # Pass the template data into the template main.html and return it to the user
-    return render_template('main.html', **templateData)
+    #Stay on main page, but update state data
+    main()
 
 @app.route("/downloadLog")
 def download():
@@ -497,7 +516,6 @@ def add_header(r):
     Notes
     -----
     """
-
 
     r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     r.headers["Pragma"] = "no-cache"
