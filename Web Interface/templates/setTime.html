@@ -3,25 +3,66 @@
    <title>Pool Pump Interface</title>
    <link rel="stylesheet" href="bootstrap.min.css">
    <style>
-     .row-margin-05 { margin-top: 2em; }
+        .row-margin-05 { margin-top: 2em; }
+        input[type="text"] {
+        width: 28px;
+        display: inline-block;
+        }
    </style>
 </head>
 <html>
 <body>
-   <h1 align='center'>Pool Pump Interface</h1>
+    <h1 align='center'>Pool Pump Interface</h1>
+	<h2 align='center'>Set system time</h2>
 
-   <div class="container" align='center'>
-     <p>Current time: </p>
-     <form>
-      <input type = "text" id="input">
-      <button type = "button" onclick="update()">Auto-fill form field</button>
-     </form>
-     <script>
-      function updateTime(){
-       document.getElementById("input").value = "This is an auto-generated value";
-      }
-     </script>
-   </div>
+	<div class="container" align='center'>
+        <br>
+        <div>System currently has: <div id="time"> </div></div>
+
+        <br>
+        <div>Enter the correct time a few seconds in advance and click "submit" when that time is reached.</div>
+        <form action="{{ url_for('set_time') }}" method="post">
+            <div class="row">
+                <label for="new_HH">HH:</label>
+                <input type="text" id="new_HH" name="new_HH" value="" size="2">
+                <label for="new_MM">MM:</label>
+                <input type="text" id="new_MM" name="new_MM" value="" size="2">
+                <label for="new_SS">SS:</label>
+                <input type="text" id="new_SS" name="new_SS" value="" size="2">
+                <label for="new_dd">dd:</label>
+                <input type="text" id="new_dd" name="new_dd" value="" size="2">
+                <label for="new_mm">mm:</label>
+                <input type="text" id="new_mm" name="new_mm" value="" size="2">
+                <label for="new_yy">yy:</label>
+                <input type="text" id="new_yy" name="new_yy" value="" size="2">
+            </div>
+            <br><br>
+            <input type="submit" value="Submit">
+        </form>
+        <form action="{{ url_for('main') }}">
+            <input type="submit" value="Return to main page" />
+        </form>
+	 
+        <script>
+            function updateClock() {
+                var now = new Date(), // current date
+                months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                time = ("0" + now.getHours()).slice(-2) + ':' + ("0" + now.getMinutes()).slice(-2) + ':' + ("0" + now.getSeconds()).slice(-2)
+
+                date = [now.getDate(), 
+                months[now.getMonth()],
+                now.getFullYear()].join(' ');
+
+                // set the content of the element with the ID time to the formatted string
+                document.getElementById('time').innerHTML = [time, date].join(' ');
+
+                // call this function again in 1000ms
+                setTimeout(updateClock, 1000);
+            }
+            
+            updateClock(); // initial call
+        </script>
+    </div>
 
 </body>
 </html>

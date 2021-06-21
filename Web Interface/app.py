@@ -162,7 +162,7 @@ def checkTime():
     global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_run_pending
     #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
-    sensors[0] = rtc_get()
+    sensors[0] = RTC.rtc_get()
     currtime = sensors[0][2]*100 + sensors[0][1]
 
     drift_correction = 60 - sensors[0][0] #Subtract out the seconds from timer delay so this happens on the minute
@@ -203,7 +203,7 @@ def checkTime():
         if (desired_pump_state is 1) and (pump_on is False):
             startPump()
             lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
-        else if (desired_pump_state is 0) and (pump_on is True):
+        elif (desired_pump_state is 0) and (pump_on is True):
             stopPump()
             lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
             
@@ -259,7 +259,7 @@ def setSchedule():
             
             if (23 < on_hh) or (0 > on_hh):
                 raise TypeError("HOUR: You must enter an integer between 0 and 23")
-            else if(59 < on_mm) or (0 > on_mm):
+            elif(59 < on_mm) or (0 > on_mm):
                 raise TypeError("MINUTE: You must enter an integer between 0 and 59")
                 
             sched_on = (on_hh * 100) + on_mm
@@ -280,7 +280,7 @@ def setSchedule():
             
             if (23 < off_hh) or (0 > off_hh):
                 raise TypeError("HOUR: You must enter an integer between 0 and 23")
-            else if(59 < off_mm) or (0 > off_mm):
+            elif(59 < off_mm) or (0 > off_mm):
                 raise TypeError("MINUTE: You must enter an integer between 0 and 59")
                 
             sched_on = (off_hh * 100) + off_mm
@@ -299,7 +299,7 @@ def setSchedule():
                 startPump()
                 lastEvent = "daily schedule"
                 lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
-        else if sched_off > sched_on:
+        elif sched_off > sched_on:
             if (currtime >= sched_on) and (currtime < sched_off):
                 startPump()
                 lastEvent = "daily schedule"
@@ -330,7 +330,7 @@ def set_one_time_run():
             
             if (23 < on_hh) or (23 < off_hh) or (0 > on_hh) or (0 > off_hh):
                 raise TypeError("HOUR: You must enter an integer between 0 and 23")
-            else if(59 < on_mm) or (59 < off_mm) or (0 > on_mm) or (0 > off_mm):
+            elif(59 < on_mm) or (59 < off_mm) or (0 > on_mm) or (0 > off_mm):
                 raise TypeError("MINUTE: You must enter an integer between 0 and 59")
                 
             one_time_on = (on_hh * 100) + on_mm
@@ -346,7 +346,7 @@ def set_one_time_run():
                 lastEvent = "one-time schedule"
                 lastEventTime = "%d:%d" % (sensors[0][2], sensors[0][1])
                 one_time_run_pending = 0
-        else if one_time_off > one_time_on:
+        elif one_time_off > one_time_on:
             if (currtime >= one_time_on) and (currtime < one_time_off):
                 startPump()
                 lastEvent = "one-time schedule"
@@ -454,7 +454,7 @@ def logs():
 
 @app.route("/setTime", methods=['GET', 'POST'])
 def set_time():
-    current_time = rtc_get()
+    current_time = RTC.rtc_get()
 
     templateData = {
         'curr_time' : sensors[0]
@@ -471,18 +471,18 @@ def set_time():
 
             if (59 < new_SS) or (0 > new_SS):
                 raise TypeError("SECOND: You must enter an integer between 0 and 59")
-            else if(59 < new_MM) or (0 > new_MM):
+            elif(59 < new_MM) or (0 > new_MM):
                 raise TypeError("MINUTE: You must enter an integer between 0 and 59")
-            else if(23 < new_HH) or (0 > new_HH):
+            elif(23 < new_HH) or (0 > new_HH):
                 raise TypeError("HOUR: You must enter an integer between 0 and 23")
-            else if(31 < new_dd) or (0 > new_dd):
+            elif(31 < new_dd) or (0 > new_dd):
                 raise TypeError("DAY: You must enter an integer between 0 and 31")
-            else if(12 < new_mm) or (0 > new_mm):
+            elif(12 < new_mm) or (0 > new_mm):
                 raise TypeError("MONTH: You must enter an integer between 0 and 12")
-            else if(99 < new_yy) or (0 > new_yy):
+            elif(99 < new_yy) or (0 > new_yy):
                 raise TypeError("YEAR: You must enter an integer between 0 and 99")
                 
-            rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
+            RTC.rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
         except:
             pass
 
