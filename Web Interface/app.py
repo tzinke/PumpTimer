@@ -40,7 +40,7 @@ import smbus
 import datetime
 import subprocess
 from flask import Flask, render_template, request, send_file
-import RTC
+import RPi.GPIO as GPIO
 from threading import Timer
 
 ##################################################################################################
@@ -57,7 +57,7 @@ server_port = 5000
 #   One-time schedules will be lost in power outage
 sched_path = "./static/schedule"
 log_dir = "./static/logs/"
-log_path = null #Will get set to current date
+log_path = '' #Will get set to current date
 
 #State variables
 pressureFailure = False
@@ -100,6 +100,94 @@ app = Flask(__name__)
 ##################################################################################################
 # # Function Definitions/Client Routing
 ##################################################################################################
+
+def rtc_set(time_string):
+    """
+    Description
+    -----------
+    This function writes to the registers of the RTC
+
+    Parameters
+    ----------
+    time_string: String with the current 24-hour time formatted as
+        "yyyy mm dd HH MM SS"
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+
+    Change Log
+    ----------
+
+    Notes
+    -----
+    """
+    currtime = datetime.datetime.strptime(time_string, "%Y %m %d %H %M %S")
+
+    second= (int(currtime.second /10) * 16) + (currtime.second % 10)
+    minute = (int(currtime.minute /10) * 16) + (currtime.minute % 10)
+    hour = (int(currtime.hour /10) * 16) + (currtime.hour % 10)
+    day = (int(currtime.day /10) * 16) + (currtime.day % 10)
+    month = (int(currtime.month /10) * 16) + (currtime.month % 10)
+    year = (int(currtime.year /10) * 16) + (currtime.year % 10)
+
+    bus.write_i2c_block_data(0x32, 0, [second, minute, hour, 1, day, month, year])
+
+def rtc_get():
+    """
+    Description
+    -----------
+    This function reads from the registers of the RTC and sets the system time
+        accordingly.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    A list containing the current RTC setting
+
+    Examples
+    --------
+
+    Change Log
+    ----------
+
+    Notes
+    -----
+    """
+    '''
+    regs = bus.read_i2c_block_data(0x32, 0, 7)
+
+    seconds = "%d" % ((int(regs[0]/16) * 10) + (regs[0] % 16))
+    if int(seconds) < 10:
+        seconds = "0" + seconds
+    minutes = "%d" % ((int(regs[1]/16) * 10) + (regs[1] % 16))
+    if int(minutes) < 10:
+         minutes = "0" + minutes
+    hours = "%d" % ((int(regs[2]/16) * 10) + (regs[2] % 16))
+    if int(hours) < 10:
+         hours = "0" + hours
+    day = "%d" % ((int(regs[4]/16) * 10) + (regs[4] % 16))
+    if int(day) < 10:
+         day = "0" + day
+    month = "%d" % ((int(regs[5]/16) * 10) + (regs[5] % 16))
+    if int(month) < 10:
+         month = "0" + month
+    year = "%d" % ((int(regs[6]/16) * 10) + (regs[6] % 16))
+    if int(year) < 10:
+         year = "0" + year
+
+    os.system("date -s \"20%s%s%s %s:%s:%s\"" % (year, month, day, hours, minutes, seconds))
+    print("20%s%s%s %s:%s:%s" % (year, month, day, hours, minutes, seconds))
+
+    return [seconds, minutes, hours, day, month, year]
+    '''
+    return [0, 5, 10]
 
 def startPump():
     global pump_on, cooldown
@@ -162,7 +250,7 @@ def checkTime():
     global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_run_pending
     #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
-    sensors[0] = RTC.rtc_get()
+    sensors[0] = rtc_get()
     currtime = sensors[0][2]*100 + sensors[0][1]
 
     drift_correction = 60 - sensors[0][0] #Subtract out the seconds from timer delay so this happens on the minute
@@ -449,12 +537,13 @@ def logs():
 
         if not requested == 'none':
             #TODO
+            pass
 
     return render_template('logs.html', **(logs), **loginfo)
 
 @app.route("/setTime", methods=['GET', 'POST'])
 def set_time():
-    current_time = RTC.rtc_get()
+    current_time = rtc_get()
 
     templateData = {
         'curr_time' : sensors[0]
@@ -468,23 +557,23 @@ def set_time():
             new_dd = int(request.form['new_dd'])
             new_mm = int(request.form['new_mm'])
             new_yy = int(request.form['new_yy'])
-
-            if (59 < new_SS) or (0 > new_SS):
-                raise TypeError("SECOND: You must enter an integer between 0 and 59")
-            elif(59 < new_MM) or (0 > new_MM):
-                raise TypeError("MINUTE: You must enter an integer between 0 and 59")
-            elif(23 < new_HH) or (0 > new_HH):
-                raise TypeError("HOUR: You must enter an integer between 0 and 23")
-            elif(31 < new_dd) or (0 > new_dd):
-                raise TypeError("DAY: You must enter an integer between 0 and 31")
-            elif(12 < new_mm) or (0 > new_mm):
-                raise TypeError("MONTH: You must enter an integer between 0 and 12")
-            elif(99 < new_yy) or (0 > new_yy):
-                raise TypeError("YEAR: You must enter an integer between 0 and 99")
-                
-            RTC.rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
         except:
-            pass
+            raise Exception("You must enter a value in every box!! Press back or refresh to try again.")
+
+        if (59 < new_SS) or (0 > new_SS):
+            raise TypeError("SECOND: You must enter an integer between 0 and 59")
+        elif(59 < new_MM) or (0 > new_MM):
+            raise TypeError("MINUTE: You must enter an integer between 0 and 59")
+        elif(23 < new_HH) or (0 > new_HH):
+            raise TypeError("HOUR: You must enter an integer between 0 and 23")
+        elif(31 < new_dd) or (0 > new_dd):
+            raise TypeError("DAY: You must enter an integer between 0 and 31")
+        elif(12 < new_mm) or (0 > new_mm):
+            raise TypeError("MONTH: You must enter an integer between 0 and 12")
+        elif(99 < new_yy) or (0 > new_yy):
+            raise TypeError("YEAR: You must enter an integer between 0 and 99")
+            
+        #rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
 
     return render_template('setTime.html', **templateData)
 
