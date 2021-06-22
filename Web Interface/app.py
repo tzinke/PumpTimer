@@ -160,8 +160,9 @@ def rtc_get():
     Notes
     -----
     """
-    '''
     regs = bus.read_i2c_block_data(0x32, 0, 7)
+
+    print("In rtc_get")
 
     seconds = "%d" % ((int(regs[0]/16) * 10) + (regs[0] % 16))
     if int(seconds) < 10:
@@ -186,8 +187,6 @@ def rtc_get():
     print("20%s%s%s %s:%s:%s" % (year, month, day, hours, minutes, seconds))
 
     return [seconds, minutes, hours, day, month, year]
-    '''
-    return [0, 5, 10]
 
 def startPump():
     global pump_on, cooldown
@@ -250,10 +249,13 @@ def checkTime():
     global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_run_pending
     #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
+    print("Checking time!")
     sensors[0] = rtc_get()
     currtime = sensors[0][2]*100 + sensors[0][1]
+    print("Currtime: %d" % currtime)
 
     drift_correction = 60 - sensors[0][0] #Subtract out the seconds from timer delay so this happens on the minute
+    print("Drift correction: %d" % drift_correction)
     #Correcting for drift means timer_clock and timer_pt can coincide.
     #   If drift-correction is needed, I need to delay timer_pt such that it will still be 1.5s off
     '''
@@ -398,9 +400,10 @@ def setSchedule():
             stopPump()
 
     templateData = {
-        'curr_on' : sched_on,
-        'curr_off' : sched_off,
-        'currtime' : sensors[0]
+        'curr_on_hh' : int(sched_on/100),
+        'curr_on_mm' : sched_on - (int(sched_on/100) * 100),
+        'curr_off_hh' : int(sched_off/100),
+        'curr_off_mm' : sched_off - (int(sched_off/100) * 100)
     }
 
     return render_template('setSchedule.html', **templateData)
@@ -573,7 +576,7 @@ def set_time():
         elif(99 < new_yy) or (0 > new_yy):
             raise TypeError("YEAR: You must enter an integer between 0 and 99")
             
-        #rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
+        rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
 
     return render_template('setTime.html', **templateData)
 
