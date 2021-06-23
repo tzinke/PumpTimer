@@ -6,7 +6,7 @@
 <html>
 <body>
     <h1 align='center'>Pool Pump Interface</h1>
-	<h2 align='center'>Set system time</h2>
+	<h2 align='center'>Set daily schedule</h2>
 
 	<div class="container" align='center'>
     
@@ -19,7 +19,7 @@
 
         <br>
         <div style="width:400px;"><b>Enter the new times in 24-hour format, separated by a colon. Leave a box blank to reuse the previous setting.</b></div><br>
-        <form action="{{ url_for('set_time') }}" method="post">
+        <form action="{{ url_for('set_schedule') }}" method="post">
             <div class="row">
                 <label for="new_on">New start time:</label>
                 <input type="text" id="new_on" name="new_on" placeholder="hh:mm" size="2">

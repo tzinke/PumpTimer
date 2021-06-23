@@ -55,7 +55,7 @@ server_port = 5000
 #Schedule is written to file so the timer can resume
 #   the schedule in case of power outage
 #   One-time schedules will be lost in power outage
-sched_path = "./static/schedules/"
+sched_path = "./static/schedule"
 log_dir = "./static/logs/"
 log_path = '' #Will get set to current date
 
@@ -266,12 +266,14 @@ def checkTime():
         
     if mutex is 0:
         mutex = 1
-        desired_pump_state = 0
+        desired_pump_state = pump_on
         #Using only if statements (no else or else-if) so time-collisions will result in pump state OFF
         if currtime == sched_on:
+            print("Current time is schedule on. Starting pump.")
             desired_pump_state = 1
             lastEvent = "daily schedule"
         if currtime == sched_off:
+            print("Current time is schedule off. Stopping pump.")
             desired_pump_state = 0
             lastEvent = "daily schedule"
             
@@ -279,9 +281,11 @@ def checkTime():
         #   to give preference to one_time-run schedules
         if one_time_run_pending is 1:
             if currtime == one_time_on:
+                print("Current time is single on. Starting pump.")
                 desired_pump_state = 1
                 lastEvent = "one_time-run schedule"
             if currtime == one_time_off:
+                print("Current time is single off. Stopping pump.")
                 desired_pump_state = 0
                 one_time_run_pending = 0 #one_time-run schedule finished
                 one_time_on = one_time_off = 0
@@ -337,12 +341,12 @@ def main():
     return render_template('main.html', **templateData)
 
 @app.route("/setSchedule", methods=['GET', 'POST'])
-def setSchedule():
+def set_schedule():
     global sched_off, sched_on
     if request.method == 'POST':
         on_time = request.form['new_on']
         
-        if not on_time == none:
+        if not on_time == '':
             strsplt = on_time.split(':')
             on_hh = int(strsplt[0])
             on_mm = int(strsplt[1])
@@ -359,12 +363,12 @@ def setSchedule():
                 old_off = int(file.readline())
 
             with open(sched_path, "w") as file:
-                file.write(sched_on)
-                file.write(old_off)
+                file.write("%d\n" % sched_on)
+                file.write("%d" % old_off)
 
         off_time = request.form['new_off']
         
-        if not off_time == none:
+        if not off_time == '':
             strsplt = off_time.split(':')
             off_hh = int(strsplt[0])
             off_mm = int(strsplt[1])
@@ -380,17 +384,26 @@ def setSchedule():
                 old_on = int(file.readline())
 
             with open(sched_path, "w") as file:
-                file.write(old_on)
-                file.write(sched_off)
+                file.write("%d\n" % old_on)
+                file.write("%d" % sched_off)
 
+        #TODO How do I handle one-time schedules in this?
         if sched_off < sched_on: #Wrap through midnight
             if (currtime >= sched_on) or (currtime < sched_off):
                 startPump()
                 lastEvent = "daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            elif pump_on is True: #Outside new schedule time + pump is on
+                stopPump()
+                lastEvent = "daily schedule"
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
         elif sched_off > sched_on:
             if (currtime >= sched_on) and (currtime < sched_off):
                 startPump()
+                lastEvent = "daily schedule"
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            elif pump_on is True: #Outside new schedule time + pump is on
+                stopPump()
                 lastEvent = "daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
         else: #sched_off is the same as sched_on
@@ -538,7 +551,7 @@ def logs():
     if request.method == 'POST':
         requested = request.form['req_log']
 
-        if not requested == 'none':
+        if not requested == '':
             #TODO
             pass
 
@@ -573,6 +586,30 @@ def set_time():
             raise TypeError("YEAR: You must enter an integer between 0 and 99")
             
         rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
+
+        #TODO How do I handle one-time schedules in this?
+        if sched_off < sched_on: #Wrap through midnight
+            if (currtime >= sched_on) or (currtime < sched_off):
+                startPump()
+                lastEvent = "daily schedule"
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            elif pump_on is True: #Outside new schedule time + pump is on
+                stopPump()
+                lastEvent = "daily schedule"
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+        elif sched_off > sched_on:
+            if (currtime >= sched_on) and (currtime < sched_off):
+                startPump()
+                lastEvent = "daily schedule"
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            elif pump_on is True: #Outside new schedule time + pump is on
+                stopPump()
+                lastEvent = "daily schedule"
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+        else: #sched_off is the same as sched_on
+            lastEvent = "daily schedule"
+            lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            stopPump()
 
     templateData = {
         'curr_time' : datetime.datetime.now().strftime("%a, %d %b %-y %H:%M:%S"),
@@ -627,10 +664,27 @@ if __name__ == "__main__":
 
     #Start the non-interface threads 1.5s apart so they never coincide
     #   Clock timer interval = 60s; pressure timer interval = 3s
-    timer_clock = Timer(0.1, checkTime, ())
+    timer_clock = Timer(0, checkTime, ())
     #timer_pt = Timer(1.6, readPressure, ())
     timer_clock.start()
     #timer_pt.start()
+   
+    time.sleep(0.1)
+
+    with open(sched_path, "r") as file:
+        sched_on = int(file.readline())
+        sched_off = int(file.readline())
+
+    if sched_off < sched_on: #Wrap through midnight
+        if (currtime >= sched_on) or (currtime < sched_off):
+            startPump()
+            lastEvent = "daily schedule"
+            lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+    elif sched_off > sched_on:
+        if (currtime >= sched_on) and (currtime < sched_off):
+            startPump()
+            lastEvent = "daily schedule"
+            lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
 
     #Start the interface
     app.run(host=ip, port=server_port, debug=False, use_reloader=False)
