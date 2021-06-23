@@ -11,54 +11,30 @@
 	<div class="container" align='center'>
     
         <div><b>Current System Time:</b></div>
-        <div id="time"></div><br>
+        <div id="time">{{ curr_time }}</div><br>
         
         <div><b>Current Schedule:</b></div>
-        On time: {{ curr_on_hh }}:{{ curr_on_mm }}
-        Off time: {{ curr_off_hh }}:{{curr_off_mm }}
+        <div>Pump turns on at {{ curr_on_hh }}:{{ curr_on_mm }}</div>
+        <div>Pump turns off at {{ curr_off_hh }}:{{curr_off_mm }}</div>
 
-        <br><br>
-        <div style="width:400px;"><b>Enter the new schedule in 24-hour format. If you leave a field blank, the previous setting for that field will be kept.</b></div><br>
+        <br>
+        <div style="width:400px;"><b>Enter the new times in 24-hour format, separated by a colon. Leave a box blank to reuse the previous setting.</b></div><br>
         <form action="{{ url_for('set_time') }}" method="post">
             <div class="row">
-                <label for="on_hh">On hour:</label>
-                <input type="text" id="on_hh" name="on_hh" value="" size="2">
-                <label for="on_mm">On minute:</label>
-                <input type="text" id="on_mm" name="on_mm" value="" size="2">
+                <label for="new_on">New start time:</label>
+                <input type="text" id="new_on" name="new_on" placeholder="hh:mm" size="2">
             </div>
                 
             <div class="row">
-                <label for="off_hh">Off hour:</label>
-                <input type="text" id="off_hh" name="off_hh" value="" size="2">
-                <label for="off_mm">Off minute:</label>
-                <input type="text" id="off_mm" name="off_mm" value="" size="2">
+                <label for="new_off">New stop time:</label>
+                <input type="text" id="new_off" name="new_off" placeholder="hh:mm" size="2">
             </div>
             <br><br>
-            <input type="submit" value="Submit" class="submitbutton">
+            <input type="submit" value="Save" class="submitbutton">
         </form>
         <form action="{{ url_for('main') }}">
-            <input type="submit" value="Return to main page"  class="returnbutton">
+            <input type="submit" value="Return (don't save)"  class="returnbutton">
         </form>
-	 
-        <script>
-            function updateClock() {
-                var now = new Date(), // current date
-                months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                time = ("0" + now.getHours()).slice(-2) + ':' + ("0" + now.getMinutes()).slice(-2) + ':' + ("0" + now.getSeconds()).slice(-2)
-
-                date = [now.getDate(), 
-                months[now.getMonth()],
-                now.getFullYear()].join(' ');
-
-                // set the content of the element with the ID time to the formatted string
-                document.getElementById('time').innerHTML = [time, date].join(' ');
-
-                // call this function again in 1000ms
-                setTimeout(updateClock, 1000);
-            }
-            
-            updateClock(); // initial call
-        </script>
     </div>
 
 </body>
