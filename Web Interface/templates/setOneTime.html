@@ -6,20 +6,20 @@
 <html>
 <body>
     <h1 align='center'>Pool Pump Interface</h1>
-	<h2 align='center'>Set daily schedule</h2>
+	<h2 align='center'>Set a one-time schedule</h2>
 
 	<div class="container" align='center'>
     
         <div><b>Current System Time:</b></div>
         <div id="time">{{ curr_time }}</div><br>
         
-        <div><b>Current Schedule:</b></div>
+        <div><b>Current One-Time Schedule:</b></div>
         <div>Pump turns on at {{ curr_on_hh }}:{{ curr_on_mm }}</div>
         <div>Pump turns off at {{ curr_off_hh }}:{{curr_off_mm }}</div>
 
         <br>
-        <div style="width:400px;"><b>Enter the start and stop times in 24-hour format as hh:mm (ex. '14:30' for 2:30P.M.). Leave a box blank to reuse the previous setting.</b></div><br>
-        <form action="{{ url_for('set_schedule') }}" method="post">
+        <div style="width:400px;"><b>Enter the start and stop times in 24-hour format as hh:mm (ex. '14:30' for 2:30P.M.).</b></div><br>
+        <form action="{{ url_for('set_one_time_run') }}" method="post">
             <div class="row">
                 <label for="new_on">New start time:</label>
                 <input type="text" id="new_on" name="new_on" placeholder="hh:mm" size="2">

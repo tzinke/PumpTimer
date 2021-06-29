@@ -387,29 +387,29 @@ def set_schedule():
                 file.write("%d\n" % old_on)
                 file.write("%d" % sched_off)
 
-        #TODO How do I handle one-time schedules in this?
-        if sched_off < sched_on: #Wrap through midnight
-            if (currtime >= sched_on) or (currtime < sched_off):
-                startPump()
+        if 0 == one_time_run_pending: #One-time schedules take preference
+            if sched_off < sched_on: #Wrap through midnight
+                if (currtime >= sched_on) or (currtime < sched_off):
+                    startPump()
+                    lastEvent = "daily schedule"
+                    lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                elif pump_on is True: #Outside new schedule time + pump is on
+                    stopPump()
+                    lastEvent = "daily schedule"
+                    lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            elif sched_off > sched_on:
+                if (currtime >= sched_on) and (currtime < sched_off):
+                    startPump()
+                    lastEvent = "daily schedule"
+                    lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                elif pump_on is True: #Outside new schedule time + pump is on
+                    stopPump()
+                    lastEvent = "daily schedule"
+                    lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            else: #sched_off is the same as sched_on
                 lastEvent = "daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-            elif pump_on is True: #Outside new schedule time + pump is on
                 stopPump()
-                lastEvent = "daily schedule"
-                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-        elif sched_off > sched_on:
-            if (currtime >= sched_on) and (currtime < sched_off):
-                startPump()
-                lastEvent = "daily schedule"
-                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-            elif pump_on is True: #Outside new schedule time + pump is on
-                stopPump()
-                lastEvent = "daily schedule"
-                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-        else: #sched_off is the same as sched_on
-            lastEvent = "daily schedule"
-            lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-            stopPump()
 
     templateData = {
         'curr_time' : datetime.datetime.now().strftime("%a, %d %b %-y %H:%M:%S"),
@@ -449,16 +449,15 @@ def set_one_time_run():
                 startPump()
                 lastEvent = "one-time schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-                one_time_run_pending = 0
         elif one_time_off > one_time_on:
             if (currtime >= one_time_on) and (currtime < one_time_off):
                 startPump()
                 lastEvent = "one-time schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-                one_time_run_pending = 0
         else: #sched_off is the same as sched_on
             lastEvent = "one-time schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            one_time_run_pending = 0
             stopPump()
             
     templateData = {
