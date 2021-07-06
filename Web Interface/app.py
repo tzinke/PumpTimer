@@ -29,6 +29,7 @@ Pressure transducer operations are commented out for now until the sensor is ins
 
 '''
 
+#TODO Use an actual mutex to define critical sections
 #TODO go through functions and make sure global variables are declared global
 #TODO use performance timer to check PT drift correction against using modulus
 
