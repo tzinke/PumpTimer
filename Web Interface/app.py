@@ -53,7 +53,7 @@ from threading import Timer
 
 #Define the address and port this server will run on
 ip = "192.168.15.1"
-server_port = 8080 
+server_port = 8080
 
 #Schedule and log file paths
 #Schedule is written to file so the timer can resume
@@ -75,6 +75,7 @@ mutex = 0 #This is to prevent unwanted interactions between timer and button eve
 pt_task_running = 0
 
 #Schedule variables
+currtime = -1
 sched_on = 0
 sched_off = 0
 one_time_on = 0
@@ -198,7 +199,7 @@ def startPump():
         time.sleep(0.015)
         GPIO.output(18, 0)
         pump_on = True
-        
+
         GPIO.output(15,1)
         cooldown = 1
         Timer(3, cooldown_counter, ()).start()
@@ -211,16 +212,16 @@ def stopPump():
         time.sleep(0.015)
         GPIO.output(14, 0)
         pump_on = False
-        
+
         GPIO.output(15,1)
         cooldown = 1
         Timer(3, cooldown_counter, ()).start()
 
 def toggle_pump():
     global lastEvent, mutex
-    
+
     while(mutex is 1): pass
-    
+
     mutex = 1
     if pump_on is False:
         startPump()
@@ -241,7 +242,7 @@ def readPressure():
     curr_p = int(smbus.read_block_data(pt_addr, 0))
     #sensors[1] = ?
     #Do I want to do some kind of sliding average or anything?
-    
+
     #if pressure is below some threshold for some amount of time,
     #   turn pump off and set error flag
     #timer_pt = Timer(3, readPressure, ())
@@ -266,7 +267,7 @@ def checkTime():
         timer_pt = Timer(1.5 * mod, readPressure, ())
         timer_pt.start()
     '''
-        
+
     if mutex is 0:
         mutex = 1
         desired_pump_state = pump_on
@@ -294,7 +295,7 @@ def checkTime():
                 print("Current time is schedule on. Starting pump.")
                 desired_pump_state = 1
                 lastEventBuffer = "daily schedule"
-        
+
         if (desired_pump_state is 1) and (pump_on is False):
             startPump()
             lastEvent = lastEventBuffer
@@ -303,7 +304,7 @@ def checkTime():
             stopPump()
             lastEvent = lastEventBuffer
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-            
+
         mutex = 0
 
     print("Currtime: %d" % currtime)
@@ -337,7 +338,7 @@ def main():
 
     Notes
     -----
-    """    
+    """
     templateData = {
         'sensors' : sensors,
         'last' : lastEvent,
@@ -356,19 +357,19 @@ def set_schedule():
     global sched_off, sched_on
     if request.method == 'POST':
         on_time = request.form['new_on']
-        
+
         if not on_time == '':
             strsplt = on_time.split(':')
             on_hh = int(strsplt[0])
             on_mm = int(strsplt[1])
-            
+
             if (23 < on_hh) or (0 > on_hh):
                 raise TypeError("HOUR: You must enter an integer between 0 and 23")
             elif(59 < on_mm) or (0 > on_mm):
                 raise TypeError("MINUTE: You must enter an integer between 0 and 59")
-                
+
             sched_on = (on_hh * 100) + on_mm
-            
+
             with open(sched_path, "r") as file:
                 file.readline()
                 old_off = int(file.readline())
@@ -378,19 +379,19 @@ def set_schedule():
                 file.write("%d" % old_off)
 
         off_time = request.form['new_off']
-        
+
         if not off_time == '':
             strsplt = off_time.split(':')
             off_hh = int(strsplt[0])
             off_mm = int(strsplt[1])
-            
+
             if (23 < off_hh) or (0 > off_hh):
                 raise TypeError("HOUR: You must enter an integer between 0 and 23")
             elif(59 < off_mm) or (0 > off_mm):
                 raise TypeError("MINUTE: You must enter an integer between 0 and 59")
-            
+
             sched_off = (off_hh * 100) + off_mm
-            
+
             with open(sched_path, "r") as file:
                 old_on = int(file.readline())
 
@@ -398,7 +399,7 @@ def set_schedule():
                 file.write("%d\n" % old_on)
                 file.write("%d" % sched_off)
 
-        if (one_time_run_pending is 0): 
+        if (one_time_run_pending is 0):
             if sched_off < sched_on: #Wrap through midnight
                 if (currtime >= sched_on) or (currtime < sched_off):
                     startPump()
@@ -443,12 +444,12 @@ def set_one_time_run():
             off_hh = int(request.form['off_hh'])
             on_mm = int(request.form['on_mm'])
             off_mm = int(request.form['off_mm'])
-            
+
             if (23 < on_hh) or (23 < off_hh) or (0 > on_hh) or (0 > off_hh):
                 raise TypeError("HOUR: You must enter an integer between 0 and 23")
             elif(59 < on_mm) or (59 < off_mm) or (0 > on_mm) or (0 > off_mm):
                 raise TypeError("MINUTE: You must enter an integer between 0 and 59")
-                
+
             one_time_on = (on_hh * 100) + on_mm
             one_time_off = (off_hh * 100) + off_mm
 
@@ -467,10 +468,12 @@ def set_one_time_run():
                     print("One-time schedule includes current time. Turning pump on\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            elif one_time_on == one_time_off:
+                one_time_on, one_time_off, one_time_run_pending = 0, 0, 0
         except: #One of the times entered was not a valid integer
             one_time_on = 0
             one_time_off = 0
-            
+
     templateData = {
         'curr_on' : ("%02d:%02d" % (int(one_time_on/100), one_time_on - (int(one_time_on/100) * 100))),
         'curr_off' : ("%02d:%02d" % (int(one_time_off/100), one_time_off - (int(one_time_off/100) * 100))),
@@ -478,13 +481,13 @@ def set_one_time_run():
     }
 
     return render_template('setOneTime.html', **templateData)
-    
+
 @app.route("/toggle")
 def appToggle():
     toggle_pump()
     lastEvent = "Toggled via web"
     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-    
+
     #Stay on main page, but update state data
     main()
 
@@ -569,6 +572,7 @@ def logs():
 
 @app.route("/setTime", methods=['GET', 'POST'])
 def set_time():
+    global sensors, currtime
     current_time = rtc_get()
 
     if request.method == 'POST':
@@ -594,9 +598,10 @@ def set_time():
             raise TypeError("MONTH: You must enter an integer between 0 and 12")
         elif(99 < new_yy) or (0 > new_yy):
             raise TypeError("YEAR: You must enter an integer between 0 and 99")
-            
+
         rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
         sensors[0] = rtc_get()
+        currtime = int(sensors[0][2])*100 + int(sensors[0][1])
 
         if (one_time_run_pending is 0):
             if sched_off < sched_on: #Wrap through midnight
@@ -679,8 +684,9 @@ if __name__ == "__main__":
     #timer_pt = Timer(1.6, readPressure, ())
     timer_clock.start()
     #timer_pt.start()
-   
-    time.sleep(0.1)
+
+    while currtime is -1:
+        pass
 
     with open(sched_path, "r") as file:
         sched_on = int(file.readline())
@@ -689,11 +695,13 @@ if __name__ == "__main__":
     if sched_off < sched_on: #Wrap through midnight
         if (currtime >= sched_on) or (currtime < sched_off):
             startPump()
+            print("Currtime >= sch on OR < sched_off -> pump on")
             lastEvent = "daily schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
     elif sched_off > sched_on:
         if (currtime >= sched_on) and (currtime < sched_off):
             startPump()
+            print("Currtime >= sch on AND < sched_off -> pump on")
             lastEvent = "daily schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
 
