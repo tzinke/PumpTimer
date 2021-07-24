@@ -29,7 +29,6 @@ Pressure transducer operations are commented out for now until the sensor is ins
 
 '''
 
-#TODO Use an actual mutex to define critical sections
 #TODO go through functions and make sure global variables are declared global
 #TODO use performance timer to check PT drift correction against using modulus
 #TODO One-time runs do not seem to be working. I set one and it still showed 00:00 for on and off
@@ -45,7 +44,7 @@ import datetime
 import subprocess
 from flask import Flask, render_template, request, send_file
 import RPi.GPIO as GPIO
-from threading import Timer
+from threading import Timer, Lock
 
 ##################################################################################################
 # # Global Variables
@@ -71,7 +70,7 @@ pump_one_time_run = False
 lastEvent = "None" #Possible values: "button", "daily schedule", "one_time-run schedule", "pressure failure"
 lastEventTime = 0
 cooldown = 0 #This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
-mutex = 0 #This is to prevent unwanted interactions between timer and button events
+mutex = Lock() #This is to prevent unwanted interactions between timer and button events
 pt_task_running = 0
 
 #Schedule variables
@@ -220,15 +219,13 @@ def stopPump():
 def toggle_pump():
     global lastEvent, mutex
 
-    while(mutex is 1): pass
-
-    mutex = 1
+    mutex.acquire()
     if pump_on is False:
         startPump()
     else:
         stopPump()
 
-    mutex = 0
+    mutex.release()
     lastEvent = "button"
     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
 
@@ -268,8 +265,8 @@ def checkTime():
         timer_pt.start()
     '''
 
-    if mutex is 0:
-        mutex = 1
+    mutex.acquire(blocking=False)
+    if mutex.locked():
         desired_pump_state = pump_on
         lastEventBuffer = 0
 
@@ -305,7 +302,7 @@ def checkTime():
             lastEvent = lastEventBuffer
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
 
-        mutex = 0
+        mutex.release()
 
     print("Currtime: %d" % currtime)
     print("Pump on?\t%s" % pump_on)
