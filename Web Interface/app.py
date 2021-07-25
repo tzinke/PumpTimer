@@ -52,7 +52,7 @@ from threading import Timer, Lock
 
 #Define the address and port this server will run on
 ip = "192.168.15.1"
-server_port = 8080
+server_port = 80
 
 #Schedule and log file paths
 #Schedule is written to file so the timer can resume
@@ -60,7 +60,9 @@ server_port = 8080
 #   One-time schedules will be lost in power outage
 sched_path = "./static/schedule"
 log_dir = "./static/logs/"
+log_path_recovery = "./static/logRecovery"
 log_path = '' #Will get set to current date
+current_day = 0
 
 #State variables
 pressureFailure = False
@@ -246,7 +248,7 @@ def readPressure():
     #timer_pt.start()
 
 def checkTime():
-    global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_run_pending
+    global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_run_pending, current_day
     #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
     sensors[0] = rtc_get()
@@ -310,6 +312,15 @@ def checkTime():
 
     timer_clock = Timer(drift_correction, checkTime, ())
     timer_clock.start()
+
+    if current_day is not int(sensors[0][3]):
+        current_day = int(sensors[0][3])
+        log_path = "%s%s_%s_%s" % (log_dir, sensors[0][3], sensors[0][4], sensors[0][5])
+        with open(log_path, 'a') as newlog:
+            newlog.write("Begin\n")
+        with open(log_path_recovery, 'w') as newlogrec:
+            newlogrec.write("%d\n" % current_day)
+            newlogrec.write(log_path)
 
 @app.route("/")
 def main():
@@ -596,7 +607,7 @@ def set_time():
         elif(99 < new_yy) or (0 > new_yy):
             raise TypeError("YEAR: You must enter an integer between 0 and 99")
 
-        rtc_set("20%d %d %d %d %d %d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
+        rtc_set("20%02d %02d %02d %02d %02d %02d" % (new_yy, new_mm, new_dd, new_HH, new_MM, new_SS))
         sensors[0] = rtc_get()
         currtime = int(sensors[0][2])*100 + int(sensors[0][1])
 
@@ -675,6 +686,12 @@ if __name__ == "__main__":
     GPIO.setup(15, GPIO.OUT) #~btn_rdy LED
     GPIO.add_event_detect(4, GPIO.FALLING, callback=toggle_pump)
 
+    with open(log_path_recovery, "r") as file:
+        current_day = int(file.readline())
+        log_path = "%s" % file.readline()
+
+    print("Current day:\t%d\nLog_path:\t%s" % (current_day, log_path))
+
     #Start the non-interface threads 1.5s apart so they never coincide
     #   Clock timer interval = 60s; pressure timer interval = 3s
     timer_clock = Timer(0, checkTime, ())
@@ -682,6 +699,7 @@ if __name__ == "__main__":
     timer_clock.start()
     #timer_pt.start()
 
+    #Wait for checkTime
     while currtime is -1:
         pass
 
