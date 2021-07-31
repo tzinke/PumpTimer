@@ -248,7 +248,7 @@ def readPressure():
     #timer_pt.start()
 
 def checkTime():
-    global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_run_pending, current_day
+    global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_on, one_time_off, one_time_run_pending, current_day
     #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
     sensors[0] = rtc_get()
@@ -448,10 +448,13 @@ def set_one_time_run():
     global one_time_off, one_time_on, one_time_run_pending
     if request.method == 'POST':
         try:
-            on_hh = int(request.form['on_hh'])
-            off_hh = int(request.form['off_hh'])
-            on_mm = int(request.form['on_mm'])
-            off_mm = int(request.form['off_mm'])
+            strsplt = request.form['new_on'].split(':')
+            on_hh = int(strsplt[0])
+            on_mm = int(strsplt[1])
+
+            strsplt = request.form['new_off'].split(':')
+            off_hh = int(strsplt[0])
+            off_mm = int(strsplt[1])
 
             if (23 < on_hh) or (23 < off_hh) or (0 > on_hh) or (0 > off_hh):
                 raise TypeError("HOUR: You must enter an integer between 0 and 23")
@@ -470,10 +473,20 @@ def set_one_time_run():
                     print("One-time schedule includes current time. Turning pump on\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                elif pump_on:
+                    stopPump()
+                    print("Pump was on outside of new one-time schedule. Turning pump off\n")
+                    lastEvent = "one-time schedule"
+                    lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
             elif one_time_off > one_time_on:
                 if (currtime >= one_time_on) and (currtime < one_time_off):
                     startPump()
                     print("One-time schedule includes current time. Turning pump on\n")
+                    lastEvent = "one-time schedule"
+                    lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                elif pump_on:
+                    stopPump()
+                    print("Pump was on outside of new one-time schedule. Turning pump off\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
             elif one_time_on == one_time_off:
