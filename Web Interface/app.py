@@ -69,7 +69,7 @@ pressureFailure = False
 pump_on = False
 pump_scheduled = False
 pump_one_time_run = False
-lastEvent = "None" #Possible values: "button", "daily schedule", "one_time-run schedule", "pressure failure"
+lastEvent = "None" #Possible values: "button", "daily schedule", "one-time schedule", "pressure failure"
 lastEventTime = 0
 cooldown = 0 #This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
 mutex = Lock() #This is to prevent unwanted interactions between timer and button events
@@ -192,6 +192,10 @@ def rtc_get():
 
     return [seconds, minutes, hours, day, month, year]
 
+def updateLog()
+    with open(log_path, 'a') as log:
+        log.write("%s turned pump %s at %s\n" % (lastEvent, ("ON" if pump_on else "OFF"), lastEventTime))
+
 def startPump():
     global pump_on, cooldown
     if cooldown is 0:
@@ -218,7 +222,7 @@ def stopPump():
         cooldown = 1
         Timer(3, cooldown_counter, ()).start()
 
-def toggle_pump():
+def toggle_pump(button):
     global lastEvent, lastEventTime, mutex
 
     mutex.acquire()
@@ -248,7 +252,7 @@ def readPressure():
     #timer_pt.start()
 
 def checkTime():
-    global mutex, sensors, pt_task_running, lastEvent, currtime, one_time_on, one_time_off, one_time_run_pending, current_day
+    global mutex, sensors, pt_task_running, lastEvent, lastEventTime, currtime, one_time_on, one_time_off, one_time_run_pending, current_day
     #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
     sensors[0] = rtc_get()
@@ -276,22 +280,18 @@ def checkTime():
         #Check off-times first so time-collisions will result in pump state OFF
         if one_time_run_pending is 1:
             if currtime == one_time_off:
-                print("Current time is single off. Stopping pump.")
                 desired_pump_state = 0
                 one_time_run_pending = 0 #one-time-run schedule finished
                 one_time_on = one_time_off = 0
-                lastEventBuffer = "one_time-run schedule"
+                lastEventBuffer = "one-time schedule"
             elif currtime == one_time_on:
-                print("Current time is single on. Starting pump.")
                 desired_pump_state = 1
-                lastEventBuffer = "one_time-run schedule"
+                lastEventBuffer = "one-time schedule"
         else:
             if currtime == sched_off:
-                print("Current time is schedule off. Stopping pump.")
                 desired_pump_state = 0
                 lastEventBuffer = "daily schedule"
             elif currtime == sched_on:
-                print("Current time is schedule on. Starting pump.")
                 desired_pump_state = 1
                 lastEventBuffer = "daily schedule"
 
@@ -299,10 +299,12 @@ def checkTime():
             startPump()
             lastEvent = lastEventBuffer
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            updateLog()
         elif (desired_pump_state is 0) and (pump_on is True):
             stopPump()
             lastEvent = lastEventBuffer
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            updateLog()
 
         mutex.release()
 
@@ -362,7 +364,7 @@ def main():
 
 @app.route("/setSchedule", methods=['GET', 'POST'])
 def set_schedule():
-    global sched_off, sched_on
+    global sched_off, sched_on, lastEvent, lastEventTime
     if request.method == 'POST':
         on_time = request.form['new_on']
 
@@ -414,26 +416,31 @@ def set_schedule():
                     print("Currtime >= sch on OR < sched_off -> pump on")
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
                 elif pump_on is True: #Outside new schedule time + pump is on
                     stopPump()
                     print("NOT currtime >= sch on OR < sched_off -> pump off")
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
             elif sched_off > sched_on:
                 if (currtime >= sched_on) and (currtime < sched_off):
                     startPump()
                     print("Currtime >= sch on AND < sched_off -> pump on")
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
                 elif pump_on is True: #Outside new schedule time + pump is on
                     stopPump()
                     print("NOT currtime >= sch on AND < sched_off -> pump off")
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
             else: #sched_off is the same as sched_on
                 lastEvent = "daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                 stopPump()
+                updateLog()
 
     templateData = {
         'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5])),
@@ -445,7 +452,7 @@ def set_schedule():
 
 @app.route("/setOneTime", methods=['GET', 'POST'])
 def set_one_time_run():
-    global one_time_off, one_time_on, one_time_run_pending
+    global one_time_off, one_time_on, one_time_run_pending, lastEvent, lastEventTime
     if request.method == 'POST':
         try:
             strsplt = request.form['new_on'].split(':')
@@ -473,22 +480,26 @@ def set_one_time_run():
                     print("One-time schedule includes current time. Turning pump on\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
                 elif pump_on:
                     stopPump()
                     print("Pump was on outside of new one-time schedule. Turning pump off\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
             elif one_time_off > one_time_on:
                 if (currtime >= one_time_on) and (currtime < one_time_off):
                     startPump()
                     print("One-time schedule includes current time. Turning pump on\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
                 elif pump_on:
                     stopPump()
                     print("Pump was on outside of new one-time schedule. Turning pump off\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
             elif one_time_on == one_time_off:
                 one_time_on, one_time_off, one_time_run_pending = 0, 0, 0
         except: #One of the times entered was not a valid integer
@@ -505,9 +516,11 @@ def set_one_time_run():
 
 @app.route("/toggle")
 def appToggle():
-    toggle_pump()
+    global lastEvent
+    toggle_pump(0)
     lastEvent = "Toggled via web"
-    lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+    updateLog()
+    main()
 
 @app.route("/downloadLog")
 def download():
@@ -590,7 +603,7 @@ def logs():
 
 @app.route("/setTime", methods=['GET', 'POST'])
 def set_time():
-    global sensors, currtime
+    global sensors, currtime, lastEvent, lastEventTime
     current_time = rtc_get()
 
     if request.method == 'POST':
@@ -627,23 +640,28 @@ def set_time():
                     startPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
                 elif pump_on is True: #Outside new schedule time + pump is on
                     stopPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
             elif sched_off > sched_on:
                 if (currtime >= sched_on) and (currtime < sched_off):
                     startPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
                 elif pump_on is True: #Outside new schedule time + pump is on
                     stopPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                    updateLog()
             else: #sched_off is the same as sched_on
                 lastEvent = "daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                 stopPump()
+                updateLog()
 
     templateData = {
         'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5]))
@@ -713,6 +731,9 @@ if __name__ == "__main__":
     while currtime is -1:
         pass
 
+    with open(log_path, 'a') as log:
+        log.write("Powering back on at %s\n" % currtime)
+
     with open(sched_path, "r") as file:
         sched_on = int(file.readline())
         sched_off = int(file.readline())
@@ -723,12 +744,14 @@ if __name__ == "__main__":
             print("Currtime >= sch on OR < sched_off -> pump on")
             lastEvent = "daily schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            updateLog()
     elif sched_off > sched_on:
         if (currtime >= sched_on) and (currtime < sched_off):
             startPump()
             print("Currtime >= sch on AND < sched_off -> pump on")
             lastEvent = "daily schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+            updateLog()
 
     #Start the interface
     app.run(host=ip, port=server_port, debug=False, use_reloader=False)
