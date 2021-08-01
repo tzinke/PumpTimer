@@ -219,7 +219,7 @@ def stopPump():
         Timer(3, cooldown_counter, ()).start()
 
 def toggle_pump():
-    global lastEvent, mutex
+    global lastEvent, lastEventTime, mutex
 
     mutex.acquire()
     if pump_on is False:
@@ -348,14 +348,14 @@ def main():
     -----
     """
     templateData = {
-        'sensors' : sensors,
+        'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5])),
+        'sched_on' : ("%02d:%02d" % (int(sched_on/100), sched_on - (int(sched_on/100) * 100))),
+        'sched_off' : ("%02d:%02d" % (int(sched_off/100), sched_off - (int(sched_off/100) * 100))),
+        'once_on' : ("%02d:%02d" % (int(one_time_on/100), one_time_on - (int(one_time_on/100) * 100))),
+        'once_off' : ("%02d:%02d" % (int(one_time_off/100), one_time_off - (int(one_time_off/100) * 100))),
         'last' : lastEvent,
         'lastEventTime' : lastEventTime,
-        'sched_on' : sched_on,
-        'sched_off' : sched_off,
-        'one_time_on' : one_time_on,
-        'one_time_off' : one_time_off,
-        'pump_state' : pump_on
+        'pump_state' : ("Pump is currently ON" if pump_on else "Pump is currently OFF")
     }
     # Pass the template data into the template main.html and return it to the user
     return render_template('main.html', **templateData)
@@ -508,9 +508,6 @@ def appToggle():
     toggle_pump()
     lastEvent = "Toggled via web"
     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-
-    #Stay on main page, but update state data
-    main()
 
 @app.route("/downloadLog")
 def download():

@@ -7,6 +7,14 @@
 <body>
    <h1 align='center'>Pool Pump Interface</h1>
 
+    <div class="container" align="center">
+        <div><b>Current System Time: {{ curr_time }}</b></div>
+        <div><b>Current Daily Schedule: {{ sched_on }} to {{ sched_off}}</b></div>
+        <div><b>One-time schedule: {{ once_on }} to {{ once_off }}</b></div>
+        <div><b>{{ pump_state }}</b></div>
+        <div><b>Last change caused by {{ last }} at {{ lastEventTime }}</b></div>
+    </div>
+
     <div class="flexcont">
          <a href="/setSchedule" class="button"> Set Pump Schedule</a>
          <a href="/setTime" class="button" role="button">Set System Time</a>
