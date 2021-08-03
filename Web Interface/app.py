@@ -29,9 +29,7 @@ Pressure transducer operations are commented out for now until the sensor is ins
 
 '''
 
-#TODO go through functions and make sure global variables are declared global
-#TODO use performance timer to check PT drift correction against using modulus
-#TODO One-time runs do not seem to be working. I set one and it still showed 00:00 for on and off
+# TODO use performance timer to check PT drift correction against using modulus
 
 ##################################################################################################
 # # Imports
@@ -50,55 +48,47 @@ from threading import Timer, Lock
 # # Global Variables
 ##################################################################################################
 
-#Define the address and port this server will run on
+# Define the address and port this server will run on
 ip = "192.168.15.1"
 server_port = 80
 
-#Schedule and log file paths
-#Schedule is written to file so the timer can resume
+# Schedule and log file paths
+# Schedule is written to file so the timer can resume
 #   the schedule in case of power outage
 #   One-time schedules will be lost in power outage
 sched_path = "./static/schedule"
 log_dir = "./static/logs/"
-log_path_recovery = "./static/logRecovery"
-log_path = '' #Will get set to current date
+log_recovery = "./static/logRecovery"
+log_path = '' # Will get set to current date
 current_day = 0
 
-#State variables
+# State variables
 pressureFailure = False
 pump_on = False
 pump_scheduled = False
 pump_one_time_run = False
-lastEvent = "None" #Possible values: "button", "daily schedule", "one-time schedule", "pressure failure"
+lastEvent = "None" # Possible values: "button", "daily schedule", "one-time schedule", "pressure failure"
 lastEventTime = 0
-cooldown = 0 #This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
-mutex = Lock() #This is to prevent unwanted interactions between timer and button events
+cooldown = 0 # This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
+mutex = Lock() # This is to prevent unwanted interactions between timer and button events
 pt_task_running = 0
 
-#Schedule variables
+# Schedule variables
 currtime = -1
 sched_on = 0
 sched_off = 0
 one_time_on = 0
 one_time_off = 0
-#Don't want one-time-run settings to remain active after completing
+# Don't want one-time-run settings to remain active after completing
 one_time_run_pending = 0 #0 = not pending; 1 = pending
 
-#I2C variables
+# I2C variables
 bus = smbus.SMBus(1)
 pt_addr = 0x28
 
 sensors = {
     1 : {'name' : 'Time', 'data' : 'None'},
     2 : {'name' : 'Pressure', 'data' : 'None'}
-}
-
-#Should refine these. What might the user want to know?
-states = {
-    1 : {'name' : 'Last event', 'data' : 'None'},
-    1 : {'name' : 'one_time set', 'data' : 'None'},
-    1 : {'name' : 'Pressure', 'data' : 'None'},
-    2 : {'name' : 'Schedule set', 'data' : 'None'}
 }
 
 app = Flask(__name__)
@@ -188,8 +178,6 @@ def rtc_get():
     if int(year) < 10:
          year = "0" + year
 
-    #os.system("date -s \"20%s-%s-%s %s:%s:%s\"" % (year, month, day, hours, minutes, seconds))
-
     return [seconds, minutes, hours, day, month, year]
 
 def updateLog():
@@ -199,7 +187,7 @@ def updateLog():
 def startPump():
     global pump_on, cooldown
     if cooldown is 0:
-        #GPIO18 high for 15ms
+        # GPIO18 high for 15ms
         GPIO.output(18, 1)
         time.sleep(0.015)
         GPIO.output(18, 0)
@@ -212,7 +200,7 @@ def startPump():
 def stopPump():
     global pump_on, cooldown
     if cooldown is 0:
-        #GPIO14 high for 15ms
+        # GPIO14 high for 15ms
         GPIO.output(14, 1)
         time.sleep(0.015)
         GPIO.output(14, 0)
@@ -241,26 +229,26 @@ def cooldown_counter():
     GPIO.output(15,0)
 
 def readPressure():
-    #Not sure how to poll the device... no manual provided
+    # Not sure how to poll the device... no manual provided
     curr_p = int(smbus.read_block_data(pt_addr, 0))
     #sensors[1] = ?
-    #Do I want to do some kind of sliding average or anything?
+    # Do I want to do some kind of sliding average or anything?
 
-    #if pressure is below some threshold for some amount of time,
+    # if pressure is below some threshold for some amount of time,
     #   turn pump off and set error flag
     #timer_pt = Timer(3, readPressure, ())
     #timer_pt.start()
 
 def checkTime():
     global mutex, sensors, pt_task_running, lastEvent, lastEventTime, currtime, one_time_on, one_time_off, one_time_run_pending, current_day, log_path
-    #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
+    # Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
     sensors[0] = rtc_get()
     currtime = int(sensors[0][2])*100 + int(sensors[0][1])
 
     drift_correction = 60 - int(sensors[0][0]) #Subtract out the seconds from timer delay so this happens on the minute
     print("Drift correction: %d" % drift_correction)
-    #Correcting for drift means timer_clock and timer_pt can coincide.
+    # Correcting for drift means timer_clock and timer_pt can coincide.
     #   If drift-correction is needed, I need to delay timer_pt such that it will still be 1.5s off
     '''
     if drift_correction is not 0:
@@ -276,12 +264,12 @@ def checkTime():
         desired_pump_state = pump_on
         lastEventBuffer = 0
 
-        #Check one-time schedule first to give preference to one-time schedules
-        #Check off-times first so time-collisions will result in pump state OFF
+        # Check one-time schedule first to give preference to one-time schedules
+        # Check off-times first so time-collisions will result in pump state OFF
         if one_time_run_pending is 1:
             if currtime == one_time_off:
                 desired_pump_state = 0
-                one_time_run_pending = 0 #one-time-run schedule finished
+                one_time_run_pending = 0 # one-time-run schedule finished
                 one_time_on = one_time_off = 0
                 lastEventBuffer = "one-time schedule"
             elif currtime == one_time_on:
@@ -308,21 +296,28 @@ def checkTime():
 
         mutex.release()
 
-    print("Currtime: %d" % currtime)
-    print("Pump on?\t%s" % pump_on)
-    print("One-time pending:\t%d" % one_time_run_pending)
-
     timer_clock = Timer(drift_correction, checkTime, ())
     timer_clock.start()
 
     if current_day is not int(sensors[0][3]):
         current_day = int(sensors[0][3])
         log_path = "%s%s_%s_%s" % (log_dir, sensors[0][3], sensors[0][4], sensors[0][5])
+        
         with open(log_path, 'a') as newlog:
-            newlog.write("Begin\n")
-        with open(log_path_recovery, 'w') as newlogrec:
+            newlog.write("Starting log at %s\n" % currtime)
+        with open(log_recovery, 'w') as newlogrec:
             newlogrec.write("%d\n" % current_day)
             newlogrec.write(log_path)
+        
+        try:
+            # Delete log from 3 months ago  to remove clutter (who needs such an old log?)
+            month = int(sensors[0][4])
+            if month < 4:
+                os.remove("%s%s_%d*" % (log_dir, sensors[0][3], 9 + month))
+            else:
+                os.remove("%s%s_%d*" % (log_dir, sensors[0][3], month - 3))
+        except OSError: # Such log doesn't exist
+            pass
 
 @app.route("/")
 def main():
@@ -410,14 +405,14 @@ def set_schedule():
                 file.write("%d" % sched_off)
 
         if (one_time_run_pending is 0):
-            if sched_off < sched_on: #Wrap through midnight
+            if sched_off < sched_on: # Wrap through midnight
                 if (currtime >= sched_on) or (currtime < sched_off):
                     startPump()
                     print("Currtime >= sch on OR < sched_off -> pump on")
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on is True: #Outside new schedule time + pump is on
+                elif pump_on is True: # Outside new schedule time + pump is on
                     stopPump()
                     print("NOT currtime >= sch on OR < sched_off -> pump off")
                     lastEvent = "daily schedule"
@@ -430,13 +425,13 @@ def set_schedule():
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on is True: #Outside new schedule time + pump is on
+                elif pump_on is True: # Outside new schedule time + pump is on
                     stopPump()
                     print("NOT currtime >= sch on AND < sched_off -> pump off")
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-            else: #sched_off is the same as sched_on
+            else: # sched_off is the same as sched_on
                 lastEvent = "daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                 stopPump()
@@ -474,7 +469,7 @@ def set_one_time_run():
             print("Got one-time on:\t%d\nOne-time off:\t%d\n" % (one_time_on, one_time_off))
 
             one_time_run_pending = 1
-            if one_time_off < one_time_on: #Wrap through midnight
+            if one_time_off < one_time_on: # Wrap through midnight
                 if (currtime >= one_time_on) or (currtime < one_time_off):
                     startPump()
                     print("One-time schedule includes current time. Turning pump on\n")
@@ -502,7 +497,7 @@ def set_one_time_run():
                     updateLog()
             elif one_time_on == one_time_off:
                 one_time_on, one_time_off, one_time_run_pending = 0, 0, 0
-        except: #One of the times entered was not a valid integer
+        except: # One of the times entered was not a valid integer
             one_time_on = 0
             one_time_off = 0
 
@@ -548,7 +543,7 @@ def download():
     Notes
     -----
     """
-    path = "PathToLog" % datetime.datetime.now() #TODO
+    path = "PathToLog" % datetime.datetime.now() # TODO
 
     return send_file(path, as_attachment=True)
 
@@ -587,8 +582,8 @@ def logs():
         'logs' : available_logs
     }
 
-    #TODO how can I send a log's contents for viewing on the webpage?
-    #Put it in a multi-line string or just redirect the client to the log file on SD card?
+    # TODO how can I send a log's contents for viewing on the webpage?
+    # Put it in a multi-line string or just redirect the client to the log file on SD card?
     loginfo = {
     }
 
@@ -596,7 +591,7 @@ def logs():
         requested = request.form['req_log']
 
         if not requested == '':
-            #TODO
+            # TODO
             pass
 
     return render_template('logs.html', **(logs), **loginfo)
@@ -635,13 +630,13 @@ def set_time():
         currtime = int(sensors[0][2])*100 + int(sensors[0][1])
 
         if (one_time_run_pending is 0):
-            if sched_off < sched_on: #Wrap through midnight
+            if sched_off < sched_on: # Wrap through midnight
                 if (currtime >= sched_on) or (currtime < sched_off):
                     startPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on is True: #Outside new schedule time + pump is on
+                elif pump_on is True: # Outside new schedule time + pump is on
                     stopPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
@@ -652,12 +647,12 @@ def set_time():
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on is True: #Outside new schedule time + pump is on
+                elif pump_on is True: # Outside new schedule time + pump is on
                     stopPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-            else: #sched_off is the same as sched_on
+            else: # sched_off is the same as sched_on
                 lastEvent = "daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                 stopPump()
@@ -705,29 +700,29 @@ def add_header(r):
     return r
 
 if __name__ == "__main__":
-    #Configure GPIO
+    # Configure GPIO
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
-    GPIO.setup(18, GPIO.OUT) #set
-    GPIO.setup(14, GPIO.OUT) #reset
-    GPIO.setup(4, GPIO.IN) #pump-toggle button
-    GPIO.setup(15, GPIO.OUT) #~btn_rdy LED
+    GPIO.setup(18, GPIO.OUT) # set
+    GPIO.setup(14, GPIO.OUT) # reset
+    GPIO.setup(4, GPIO.IN) # pump-toggle button
+    GPIO.setup(15, GPIO.OUT) # ~btn_rdy LED
     GPIO.add_event_detect(4, GPIO.FALLING, callback=toggle_pump)
 
-    with open(log_path_recovery, "r") as file:
+    with open(log_recovery, "r") as file:
         current_day = int(file.readline())
         log_path = "%s" % file.readline()
 
     print("Current day:\t%d\nLog_path:\t%s" % (current_day, log_path))
 
-    #Start the non-interface threads 1.5s apart so they never coincide
+    # Start the non-interface threads 1.5s apart so they never coincide
     #   Clock timer interval = 60s; pressure timer interval = 3s
     timer_clock = Timer(0, checkTime, ())
     #timer_pt = Timer(1.6, readPressure, ())
     timer_clock.start()
     #timer_pt.start()
 
-    #Wait for checkTime
+    # Wait for checkTime
     while currtime is -1:
         pass
 
@@ -738,7 +733,7 @@ if __name__ == "__main__":
         sched_on = int(file.readline())
         sched_off = int(file.readline())
 
-    if sched_off < sched_on: #Wrap through midnight
+    if sched_off < sched_on: # Wrap through midnight
         if (currtime >= sched_on) or (currtime < sched_off):
             startPump()
             print("Currtime >= sch on OR < sched_off -> pump on")
@@ -753,5 +748,5 @@ if __name__ == "__main__":
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
             updateLog()
 
-    #Start the interface
+    # Start the interface
     app.run(host=ip, port=server_port, debug=False, use_reloader=False)
