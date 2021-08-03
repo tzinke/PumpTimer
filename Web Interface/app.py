@@ -192,7 +192,7 @@ def rtc_get():
 
     return [seconds, minutes, hours, day, month, year]
 
-def updateLog()
+def updateLog():
     with open(log_path, 'a') as log:
         log.write("%s turned pump %s at %s\n" % (lastEvent, ("ON" if pump_on else "OFF"), lastEventTime))
 
@@ -252,7 +252,7 @@ def readPressure():
     #timer_pt.start()
 
 def checkTime():
-    global mutex, sensors, pt_task_running, lastEvent, lastEventTime, currtime, one_time_on, one_time_off, one_time_run_pending, current_day
+    global mutex, sensors, pt_task_running, lastEvent, lastEventTime, currtime, one_time_on, one_time_off, one_time_run_pending, current_day, log_path
     #Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
     sensors[0] = rtc_get()
