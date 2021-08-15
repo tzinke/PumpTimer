@@ -302,13 +302,13 @@ def checkTime():
     if current_day is not int(sensors[0][3]):
         current_day = int(sensors[0][3])
         log_path = "%s%s_%s_%s" % (log_dir, sensors[0][3], sensors[0][4], sensors[0][5])
-        
+
         with open(log_path, 'a') as newlog:
             newlog.write("Starting log at %s\n" % currtime)
         with open(log_recovery, 'w') as newlogrec:
             newlogrec.write("%d\n" % current_day)
             newlogrec.write(log_path)
-        
+
         try:
             # Delete log from 3 months ago  to remove clutter (who needs such an old log?)
             month = int(sensors[0][4])
@@ -515,7 +515,18 @@ def appToggle():
     toggle_pump(0)
     lastEvent = "Toggled via web"
     updateLog()
-    main()
+    templateData = {
+        'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5])),
+        'sched_on' : ("%02d:%02d" % (int(sched_on/100), sched_on - (int(sched_on/100) * 100))),
+        'sched_off' : ("%02d:%02d" % (int(sched_off/100), sched_off - (int(sched_off/100) * 100))),
+        'once_on' : ("%02d:%02d" % (int(one_time_on/100), one_time_on - (int(one_time_on/100) * 100))),
+        'once_off' : ("%02d:%02d" % (int(one_time_off/100), one_time_off - (int(one_time_off/100) * 100))),
+        'last' : lastEvent,
+        'lastEventTime' : lastEventTime,
+        'pump_state' : ("Pump is currently ON" if pump_on else "Pump is currently OFF")
+    }
+    # Pass the template data into the template main.html and return it to the user
+    return render_template('main.html', **templateData)
 
 @app.route("/downloadLog")
 def download():
