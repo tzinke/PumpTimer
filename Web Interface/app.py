@@ -526,7 +526,7 @@ def appToggle():
         'pump_state' : ("Pump is currently ON" if pump_on else "Pump is currently OFF")
     }
     # Pass the template data into the template main.html and return it to the user
-    return render_template('main.html', **templateData)
+    return render_template('toggle.html', **templateData)
 
 @app.route("/downloadLog")
 def download():
