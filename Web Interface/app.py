@@ -614,14 +614,19 @@ def set_time():
 
     if request.method == 'POST':
         try:
-            new_SS = int(request.form['new_SS'])
-            new_MM = int(request.form['new_MM'])
-            new_HH = int(request.form['new_HH'])
-            new_dd = int(request.form['new_dd'])
-            new_mm = int(request.form['new_mm'])
-            new_yy = int(request.form['new_yy'])
+            user_input = request.form['newTime'].split(' ')
+            newDate = user_input[0].split('/')
+            newTime = user_input[1].split(':')
+
+            new_HH = int(newTime[0])
+            new_MM = int(newTime[1])
+            new_SS = int(newTime[2])
+
+            new_dd = int(newDate[0])
+            new_mm = int(newDate[1])
+            new_yy = int(newDate[2])
         except:
-            raise Exception("You must enter a value in every box!! Press back or refresh to try again.")
+            raise Exception("You must enter a date and time in the format mm/dd/yy HH:MM:SS")
 
         if (59 < new_SS) or (0 > new_SS):
             raise TypeError("SECOND: You must enter an integer between 0 and 59")
