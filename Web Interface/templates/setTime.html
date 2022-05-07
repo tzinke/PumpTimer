@@ -13,11 +13,11 @@
         <div id="time">{{ curr_time }}</div>
 
         <br>
-        <div>Enter the correct 24-hour time a few seconds in advance. Click "save" when that time is reached.</div>
+        <div>Enter the correct time and click "save".</div>
         <form action="{{ url_for('set_time') }}" method="post">
             <div>
-                <label for="newTime">New time:</label>
-                <input type="text" id="newTime" name="newTime" placeholder="dd/mm/yy HH:MM:SS" size="17">
+                <label for="newTime">New time setting:</label>
+                <input type="datetime-local" id="newTime" name="newTime" size="17">
             </div>
             <br><br>
             <input type="submit" value="Save" class="submitbutton">

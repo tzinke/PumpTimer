@@ -614,17 +614,17 @@ def set_time():
 
     if request.method == 'POST':
         try:
-            user_input = request.form['newTime'].split(' ')
-            newDate = user_input[0].split('/')
+            user_input = request.form['newTime'].split('T')
+            newDate = user_input[0].split('-')
             newTime = user_input[1].split(':')
 
             new_HH = int(newTime[0])
             new_MM = int(newTime[1])
-            new_SS = int(newTime[2])
+            new_SS = 0
 
-            new_dd = int(newDate[0])
+            new_yy = int(newDate[0])
             new_mm = int(newDate[1])
-            new_yy = int(newDate[2])
+            new_dd = int(newDate[2])
         except:
             raise Exception("You must enter a date and time in the format mm/dd/yy HH:MM:SS")
 

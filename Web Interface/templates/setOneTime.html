@@ -5,29 +5,29 @@
 </head>
 <html>
 <body>
-    <h1 align='center'>Pool Pump Interface</h1>
+  <h1 align='center'>Pool Pump Interface</h1>
 	<h2 align='center'>Set a one-time schedule</h2>
 
 	<div class="container" align='center'>
-    
+
         <div><b>Current System Time:</b></div>
         <div id="time">{{ curr_time }}</div><br>
-        
+
         <div><b>Current One-Time Schedule:</b></div>
         <div>Pump turns on at {{ curr_on }}</div>
         <div>Pump turns off at {{ curr_off }}</div>
 
         <br>
-        <div style="width:400px;"><b>Enter the start and stop times in 24-hour format as hh:mm (ex. '14:30' for 2:30P.M.).</b></div><br>
+        <div style="width:400px;"><b>Enter the start and stop times.</b></div><br>
         <form action="{{ url_for('set_one_time_run') }}" method="post">
             <div class="row">
-                <label for="new_on">New start time:</label>
-                <input type="text" id="new_on" name="new_on" placeholder="hh:mm" size="2">
+                <label for="new_on">Start time:</label>
+                <input type="time" id="new_on" name="new_on" size="2">
             </div>
-                
+
             <div class="row">
-                <label for="new_off">New stop time:</label>
-                <input type="text" id="new_off" name="new_off" placeholder="hh:mm" size="2">
+                <label for="new_off">Stop time:</label>
+                <input type="time" id="new_off" name="new_off" size="2">
             </div>
             <br><br>
             <input type="submit" value="Save" class="submitbutton">
