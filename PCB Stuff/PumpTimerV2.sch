@@ -91,7 +91,7 @@ Wire Wire Line
 Text Label 700  1750 0    50   ~ 0
 Line2_in
 Text Label 700  2150 0    50   ~ 0
-Neutral
+Line1_in
 Wire Wire Line
 	700  2150 1050 2150
 Wire Wire Line
@@ -571,20 +571,12 @@ Raspberry Pi Zero W Interface
 Wire Notes Line width 10 style solid
 	8250 1200 7700 1200
 Wire Wire Line
-	3850 2950 3450 2950
+	3850 2650 3450 2650
 Wire Wire Line
-	3450 2850 3850 2850
-Wire Wire Line
-	3850 2400 3450 2400
-Wire Wire Line
-	3450 2300 3850 2300
-Text Label 3450 2950 0    50   ~ 0
-Neutral
-Text Label 3450 2850 0    50   ~ 0
-Neutral
-Text Label 3450 2300 0    50   ~ 0
+	3450 2550 3850 2550
+Text Label 3450 2550 0    50   ~ 0
 Line2_out
-Text Label 3450 2400 0    50   ~ 0
+Text Label 3450 2650 0    50   ~ 0
 Line2_in
 Wire Wire Line
 	3450 1750 3850 1750
@@ -597,14 +589,14 @@ Line1_in
 $Comp
 L Connector:282856-2 J3
 U 1 1 6074D2DA
-P 4250 2400
-F 0 "J3" H 4480 2496 50  0000 L CNN
-F 1 "282856-2" H 4480 2405 50  0000 L CNN
-F 2 "TE_282856-2" H 4250 2400 50  0001 L BNN
-F 3 "" H 4250 2400 50  0001 L BNN
-F 4 "Compliant with Exemptions" H 4250 2400 50  0001 L BNN "EU_RoHS_Compliance"
-F 5 "282856-2" H 4250 2400 50  0001 L BNN "Part"
-	1    4250 2400
+P 4250 2650
+F 0 "J3" H 4480 2746 50  0000 L CNN
+F 1 "282856-2" H 4480 2655 50  0000 L CNN
+F 2 "TE_282856-2" H 4250 2650 50  0001 L BNN
+F 3 "" H 4250 2650 50  0001 L BNN
+F 4 "Compliant with Exemptions" H 4250 2650 50  0001 L BNN "EU_RoHS_Compliance"
+F 5 "282856-2" H 4250 2650 50  0001 L BNN "Part"
+	1    4250 2650
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -965,19 +957,6 @@ F 4 "50M025045G008" H 8800 5100 50  0001 C CNN "Part"
 F 5 "971110155" H 8800 5100 50  0001 C CNN "Mating"
 F 6 "50M025045G006" H 8800 5100 50  0001 C CNN "Alternate part"
 	1    8800 5100
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:282856-2 J1
-U 1 1 6083B1AC
-P 4250 2950
-F 0 "J1" H 4480 3046 50  0000 L CNN
-F 1 "282856-2" H 4480 2955 50  0000 L CNN
-F 2 "TE_282856-2" H 4250 2950 50  0001 L BNN
-F 3 "" H 4250 2950 50  0001 L BNN
-F 4 "Compliant with Exemptions" H 4250 2950 50  0001 L BNN "EU_RoHS_Compliance"
-F 5 "282856-2" H 4250 2950 50  0001 L BNN "Part"
-	1    4250 2950
 	1    0    0    -1  
 $EndComp
 Wire Notes Line width 10 style solid
