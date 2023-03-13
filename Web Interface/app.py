@@ -618,11 +618,15 @@ def set_time():
             newDate = user_input[0].split('-')
             newTime = user_input[1].split(':')
 
+            print(user_input)
+            print(newDate)
+            print(newTime)
+
             new_HH = int(newTime[0])
             new_MM = int(newTime[1])
             new_SS = 0
 
-            new_yy = int(newDate[0])
+            new_yy = int(newDate[0]) - 2000
             new_mm = int(newDate[1])
             new_dd = int(newDate[2])
         except:

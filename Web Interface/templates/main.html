@@ -1,4 +1,5 @@
 <DOCTYPE html>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <head>
     <title>Pool Pump Interface</title>
     <link rel="stylesheet" href="{{ url_for("static", filename="styles.css") }}" />
@@ -7,7 +8,7 @@
 <body>
    <h1 align='center'>Pool Pump Interface</h1>
 
-    <div class="container" align="center">
+    <div class="container" align="center" width="100%">
         <div><b>Current System Time: {{ curr_time }}</b></div>
         <div><b>Current Daily Schedule: {{ sched_on }} to {{ sched_off}}</b></div>
         <div><b>One-time schedule: {{ once_on }} to {{ once_off }}</b></div>
@@ -15,7 +16,7 @@
         <div><b>Last change caused by {{ last }} at {{ lastEventTime }}</b></div>
     </div>
 
-    <div class="flexcont">
+    <div class="flexcont"> 
          <a href="/setSchedule" class="button"> Set Pump Schedule</a>
          <a href="/setTime" class="button" role="button">Set System Time</a>
     </div>
@@ -26,7 +27,6 @@
     </div>
     <div class="flexcont">
          <a href="/logs" class="button" role="button" align="center">View Logs</a>
-         <a href="/users" class="button" role="button">Add or Remove User</a>
     </div>
 
 </body>
