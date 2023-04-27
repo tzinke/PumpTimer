@@ -2,9 +2,9 @@
 
 # Pool Pump Timer Instructions
 
-<p>This device emits its own wi-fi network which will allow you to connect to the controller and set schedules and toggle the pump on/off.<\p>
+<p>This device emits its own wi-fi network which will allow you to connect to the controller and set schedules and toggle the pump on/off.</p>
 
-<p>The name of the network is PumpController, and the password is PumpController2803Pool<\p>
+<p>The name of the network is PumpController, and the password is PumpController2803Pool</p>
   
 <p>This network is NOT connected to the internet, so you'll probably want to deselect auto-connect for this network (otherwise your device might hop on this network and not be connected to the internet). To control the device, you will also need to turn data off if connecting with a cell phone.<\p>
 
