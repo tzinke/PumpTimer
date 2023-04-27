@@ -2319,7 +2319,7 @@
     (effects (font (size 2.0066 2.0066)) (justify left bottom))
     (uuid ca75e9e2-9a28-4d16-8f5c-949ab5213d84)
   )
-  (text "Temp sensor\naddress 0x01" (at 266.7 49.53 0)
+  (text "Temp sensor\naddress 0x49" (at 266.7 49.53 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid f2561249-d113-4fd2-8684-7f63942ffa02)
   )

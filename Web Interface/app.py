@@ -25,11 +25,9 @@ fetch_log:
 
 Change Log
 ----------
-Pressure transducer operations are commented out for now until the sensor is installed.
+27 Apr 2023 - Temp sensor operations added.
 
 '''
-
-# TODO use performance timer to check PT drift correction against using modulus
 
 ##################################################################################################
 # # Imports
@@ -54,16 +52,15 @@ server_port = 80
 
 # Schedule and log file paths
 # Schedule is written to file so the timer can resume
-#   the schedule in case of power outage
+#   the schedule and temp offset (init data) in case of power outage
 #   One-time schedules will be lost in power outage
-sched_path = "./static/schedule"
+initialization_data_path = "./static/initialization_data"
 log_dir = "./static/logs/"
 log_recovery = "./static/logRecovery"
 log_path = '' # Will get set to current date
 current_day = 0
 
 # State variables
-pressureFailure = False
 pump_on = False
 pump_scheduled = False
 pump_one_time_run = False
@@ -71,7 +68,11 @@ lastEvent = "None" # Possible values: "button", "daily schedule", "one-time sche
 lastEventTime = 0
 cooldown = 0 # This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
 mutex = Lock() # This is to prevent unwanted interactions between timer and button events
-pt_task_running = 0
+sensor_temp = 0
+temp_offset = 0
+adjusted_temp = 0
+freeze_risk_threshold = 33.5
+temp_sensor_failure = False
 
 # Schedule variables
 currtime = -1
@@ -84,11 +85,12 @@ one_time_run_pending = 0 #0 = not pending; 1 = pending
 
 # I2C variables
 bus = smbus.SMBus(1)
-pt_addr = 0x28
+rtc_addr = 0x32
+temp_sensor_addr = 0x49 #todo might need to shift left 1 bit
 
 sensors = {
     1 : {'name' : 'Time', 'data' : 'None'},
-    2 : {'name' : 'Pressure', 'data' : 'None'}
+    2 : {'name' : 'Temp', 'data' : 'None'}
 }
 
 app = Flask(__name__)
@@ -131,7 +133,7 @@ def rtc_set(time_string):
     month = (int(currtime.month /10) * 16) + (currtime.month % 10)
     year = (int(yy /10) * 16) + (yy % 10)
 
-    bus.write_i2c_block_data(0x32, 0, [second, minute, hour, 1, day, month, year])
+    bus.write_i2c_block_data(rtc_addr, 0, [second, minute, hour, 1, day, month, year])
 
 def rtc_get():
     """
@@ -157,7 +159,7 @@ def rtc_get():
     Notes
     -----
     """
-    regs = bus.read_i2c_block_data(0x32, 0, 7)
+    regs = bus.read_i2c_block_data(rtc_addr, 0, 7)
 
     seconds = "%d" % ((int(regs[0]/16) * 10) + (regs[0] % 16))
     if int(seconds) < 10:
@@ -179,6 +181,12 @@ def rtc_get():
          year = "0" + year
 
     return [seconds, minutes, hours, day, month, year]
+
+def temp_get():
+    bytes = bus.read_i2c_block_data(temp_sensor_addr, 0, 2)
+    temp = int(bytes[0] << 8) + int(bytes[1])
+    temp = float(temp * 0.00390625)
+    return temp 
 
 def updateLog():
     with open(log_path, 'a') as log:
@@ -228,23 +236,17 @@ def cooldown_counter():
     cooldown = 0
     GPIO.output(15,0)
 
-def readPressure():
-    # Not sure how to poll the device... no manual provided
-    curr_p = int(smbus.read_block_data(pt_addr, 0))
-    #sensors[1] = ?
-    # Do I want to do some kind of sliding average or anything?
-
-    # if pressure is below some threshold for some amount of time,
-    #   turn pump off and set error flag
-    #timer_pt = Timer(3, readPressure, ())
-    #timer_pt.start()
-
-def checkTime():
-    global mutex, sensors, pt_task_running, lastEvent, lastEventTime, currtime, one_time_on, one_time_off, one_time_run_pending, current_day, log_path
+def application_tick():
+    global mutex, sensors, lastEvent, lastEventTime, currtime, sensor_temp, adjusted_temp, one_time_on, one_time_off, one_time_run_pending, current_day, log_path
     # Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
     sensors[0] = rtc_get()
+    sensors[1] = temp_get()
     currtime = int(sensors[0][2])*100 + int(sensors[0][1])
+    sensor_temp = (sensors[1] * 1.8) + 32.0 
+    adjusted_temp = sensor_temp + temp_offset
+    print("Current temp: %4.1f" % sensor_temp) 
+    print("Adjusted : %5.1f" % adjusted_temp) 
 
     drift_correction = 60 - int(sensors[0][0]) #Subtract out the seconds from timer delay so this happens on the minute
     print("Drift correction: %d" % drift_correction)
@@ -261,42 +263,49 @@ def checkTime():
 
     mutex.acquire(blocking=False)
     if mutex.locked():
-        desired_pump_state = pump_on
-        lastEventBuffer = 0
-
-        # Check one-time schedule first to give preference to one-time schedules
-        # Check off-times first so time-collisions will result in pump state OFF
-        if one_time_run_pending is 1:
-            if currtime == one_time_off:
-                desired_pump_state = 0
-                one_time_run_pending = 0 # one-time-run schedule finished
-                one_time_on = one_time_off = 0
-                lastEventBuffer = "one-time schedule"
-            elif currtime == one_time_on:
-                desired_pump_state = 1
-                lastEventBuffer = "one-time schedule"
-        else:
-            if currtime == sched_off:
-                desired_pump_state = 0
-                lastEventBuffer = "daily schedule"
-            elif currtime == sched_on:
-                desired_pump_state = 1
-                lastEventBuffer = "daily schedule"
-
-        if (desired_pump_state is 1) and (pump_on is False):
+        if (adjusted_temp <= freeze_risk_threshold) and (pump_on is False):
             startPump()
-            lastEvent = lastEventBuffer
+            lastEvent = "freeze risk"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
             updateLog()
-        elif (desired_pump_state is 0) and (pump_on is True):
-            stopPump()
-            lastEvent = lastEventBuffer
-            lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-            updateLog()
+
+        else:
+            desired_pump_state = pump_on
+            lastEventBuffer = 0
+
+            # Check one-time schedule first to give preference to one-time schedules
+            # Check off-times first so time-collisions will result in pump state OFF
+            if one_time_run_pending is 1:
+                if currtime == one_time_off:
+                    desired_pump_state = 0
+                    one_time_run_pending = 0 # one-time-run schedule finished
+                    one_time_on = one_time_off = 0
+                    lastEventBuffer = "one-time schedule"
+                elif currtime == one_time_on:
+                    desired_pump_state = 1
+                    lastEventBuffer = "one-time schedule"
+            else:
+                if currtime == sched_off:
+                    desired_pump_state = 0
+                    lastEventBuffer = "daily schedule"
+                elif currtime == sched_on:
+                    desired_pump_state = 1
+                    lastEventBuffer = "daily schedule"
+
+            if (desired_pump_state is 1) and (pump_on is False):
+                startPump()
+                lastEvent = lastEventBuffer
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                updateLog()
+            elif (desired_pump_state is 0) and (pump_on is True):
+                stopPump()
+                lastEvent = lastEventBuffer
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                updateLog()
 
         mutex.release()
 
-    timer_clock = Timer(drift_correction, checkTime, ())
+    timer_clock = Timer(drift_correction, application_tick, ())
     timer_clock.start()
 
     if current_day is not int(sensors[0][3]):
@@ -346,6 +355,8 @@ def main():
     """
     templateData = {
         'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5])),
+        'sensed_temp' : ("%4.1f" % sensor_temp),
+        'estimated_temp' : ("%4.1f" % adjusted_temp),
         'sched_on' : ("%02d:%02d" % (int(sched_on/100), sched_on - (int(sched_on/100) * 100))),
         'sched_off' : ("%02d:%02d" % (int(sched_off/100), sched_off - (int(sched_off/100) * 100))),
         'once_on' : ("%02d:%02d" % (int(one_time_on/100), one_time_on - (int(one_time_on/100) * 100))),
@@ -375,13 +386,14 @@ def set_schedule():
 
             sched_on = (on_hh * 100) + on_mm
 
-            with open(sched_path, "r") as file:
+            with open(initialization_data_path, "r") as file:
                 file.readline()
                 old_off = int(file.readline())
 
-            with open(sched_path, "w") as file:
+            with open(initialization_data_path, "w") as file:
                 file.write("%d\n" % sched_on)
-                file.write("%d" % old_off)
+                file.write("%d\n" % old_off)
+                file.write("%5.1" % temp_offset)
 
         off_time = request.form['new_off']
 
@@ -397,12 +409,13 @@ def set_schedule():
 
             sched_off = (off_hh * 100) + off_mm
 
-            with open(sched_path, "r") as file:
+            with open(initialization_data_path, "r") as file:
                 old_on = int(file.readline())
 
-            with open(sched_path, "w") as file:
+            with open(initialization_data_path, "w") as file:
                 file.write("%d\n" % old_on)
-                file.write("%d" % sched_off)
+                file.write("%d\n" % sched_off)
+                file.write("%5.1f" % temp_offset)
 
         if (one_time_run_pending is 0):
             if sched_off < sched_on: # Wrap through midnight
@@ -729,6 +742,15 @@ if __name__ == "__main__":
     GPIO.setup(15, GPIO.OUT) # ~btn_rdy LED
     GPIO.add_event_detect(4, GPIO.FALLING, callback=toggle_pump)
 
+    bus.write_byte_data(temp_sensor_addr, 0x01, 0x40) # Set temp res to 11 bits (0.125 deg C)
+    if not (bus.read_byte(temp_sensor_addr) == 0x40):
+        temp_sensor_failure = True
+        print("Failed to set or read temp sensor config register!")
+    else:
+        print("Temp sensor set to 11 bit resolution!")
+
+    bus.write_byte(temp_sensor_addr, 0x00) # Set temp sensor pointer to temp value register
+
     with open(log_recovery, "r") as file:
         current_day = int(file.readline())
         log_path = "%s" % file.readline()
@@ -737,21 +759,24 @@ if __name__ == "__main__":
 
     # Start the non-interface threads 1.5s apart so they never coincide
     #   Clock timer interval = 60s; pressure timer interval = 3s
-    timer_clock = Timer(0, checkTime, ())
+    timer_clock = Timer(0, application_tick, ())
     #timer_pt = Timer(1.6, readPressure, ())
     timer_clock.start()
     #timer_pt.start()
 
-    # Wait for checkTime
+    # Wait for application_tick
     while currtime is -1:
         pass
 
     with open(log_path, 'a') as log:
         log.write("Powering back on at %s\n" % currtime)
 
-    with open(sched_path, "r") as file:
+    with open(initialization_data_path, "r") as file:
         sched_on = int(file.readline())
         sched_off = int(file.readline())
+        temp_offset = float(file.readline())
+    
+    print("Daily on: %d\nDaily off: %d\nTemp offset: %5.1f" % (sched_on, sched_off, temp_offset))
 
     if sched_off < sched_on: # Wrap through midnight
         if (currtime >= sched_on) or (currtime < sched_off):
