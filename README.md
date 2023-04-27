@@ -1,4 +1,4 @@
-<p>A timer for my pool pump using a Raspberry Pi Zero W and a custom-made PCB.<\p>
+<p>A timer for my pool pump using a Raspberry Pi Zero W and a custom-made PCB.</p>
 
 # Pool Pump Timer Instructions
 
