@@ -41,6 +41,7 @@ import subprocess
 from flask import Flask, render_template, request, send_file
 import RPi.GPIO as GPIO
 from threading import Timer, Lock
+from enum import Enum
 
 ##################################################################################################
 # # Global Variables
@@ -61,17 +62,23 @@ log_path = '' # Will get set to current date
 current_day = 0
 
 # State variables
-pump_on = False
-pump_scheduled = False
+class PumpState(Enum):
+    DAILY_SCHED_ON = 1
+    ONE_TIME_RUN_ON = 2
+    BUTTON_ON = 3
+    FREEZE_PROTECTION_ON = 4
+    OFF = 5
+current_pump_state = PumpState.OFF
 pump_one_time_run = False
 lastEvent = "None" # Possible values: "button", "daily schedule", "one-time schedule", "pressure failure"
 lastEventTime = 0
-cooldown = 0 # This is to prevent overly-frequent pump-state changes. Each change will incur a 3s cooldown
+general_cooldown = 0 # This is to prevent overly-frequent pump-state changes. Each change will incur a 3s general_cooldown
+freeze_protection_cooldown = 0 # This is to prevent overly-frequent pump-state changes. If the freeze-protection changes pump state, it will stay so for at least 10 minutes
 mutex = Lock() # This is to prevent unwanted interactions between timer and button events
 sensor_temp = 0
 temp_offset = 0
 adjusted_temp = 0
-freeze_risk_threshold = 33.5
+freeze_protection_threshold = 33.5
 temp_sensor_failure = False
 
 # Schedule variables
@@ -190,88 +197,92 @@ def temp_get():
 
 def updateLog():
     with open(log_path, 'a') as log:
-        log.write("%s turned pump %s at %s\n" % (lastEvent, ("ON" if pump_on else "OFF"), lastEventTime))
+        log.write("%s turned pump %s at %s\n" % (lastEvent, ("OFF" if (current_pump_state is PumpState.OFF) else "ON"), lastEventTime))
+        log.write("Sensed temp: %5.1f\tAdjusted temp: %5.1f\n" % (sensed_temp, adjusted_temp))
 
-def startPump():
-    global pump_on, cooldown
-    if cooldown is 0:
+def startPump(source):
+    global current_pump_state, general
+    if general_cooldown is 0:
         # GPIO18 high for 15ms
         GPIO.output(18, 1)
         time.sleep(0.015)
         GPIO.output(18, 0)
-        pump_on = True
+        current_pump_state = source
 
         GPIO.output(15,1)
-        cooldown = 1
-        Timer(3, cooldown_counter, ()).start()
+        general_cooldown = 1
+        Timer(3, general_cooldown_counter, ()).start()
 
 def stopPump():
-    global pump_on, cooldown
-    if cooldown is 0:
+    global current_pump_state, general_cooldown
+    if general_cooldown is 0:
         # GPIO14 high for 15ms
         GPIO.output(14, 1)
         time.sleep(0.015)
         GPIO.output(14, 0)
-        pump_on = False
+        current_pump_state = PumpState.OFF
 
         GPIO.output(15,1)
-        cooldown = 1
-        Timer(3, cooldown_counter, ()).start()
+        general_cooldown = 1
+        Timer(3, general_cooldown_counter, ()).start()
 
 def toggle_pump(button):
     global lastEvent, lastEventTime, mutex
 
     mutex.acquire()
-    if pump_on is False:
-        startPump()
+    if (current_pump_state is PumpState.OFF):
+        startPump(PumpState.BUTTON_ON)
     else:
         stopPump()
 
     mutex.release()
     lastEvent = "button"
     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+    updateLog()
 
-def cooldown_counter():
-    global cooldown
-    cooldown = 0
+def general_cooldown_counter():
+    global general_cooldown
+    general_cooldown = 0
     GPIO.output(15,0)
+    
+def freeze_protection_cooldown_counter():
+    global freeze_protection_cooldown
+    freeze_protection_cooldown = False
 
 def application_tick():
     global mutex, sensors, lastEvent, lastEventTime, currtime, sensor_temp, adjusted_temp, one_time_on, one_time_off, one_time_run_pending, current_day, log_path
     # Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
     sensors[0] = rtc_get()
-    sensors[1] = temp_get()
     currtime = int(sensors[0][2])*100 + int(sensors[0][1])
-    sensor_temp = (sensors[1] * 1.8) + 32.0 
-    adjusted_temp = sensor_temp + temp_offset
-    print("Current temp: %4.1f" % sensor_temp) 
-    print("Adjusted : %5.1f" % adjusted_temp) 
+    
+    if not temp_sensor_failure:
+        sensors[1] = temp_get()
+        sensor_temp = (sensors[1] * 1.8) + 32.0 
+        adjusted_temp = sensor_temp + temp_offset
 
     drift_correction = 60 - int(sensors[0][0]) #Subtract out the seconds from timer delay so this happens on the minute
     print("Drift correction: %d" % drift_correction)
-    # Correcting for drift means timer_clock and timer_pt can coincide.
-    #   If drift-correction is needed, I need to delay timer_pt such that it will still be 1.5s off
-    '''
-    if drift_correction is not 0:
-        timer_pt.cancel()
-        div = drift_correction / 1.5
-        mod = div - int(div)
-        timer_pt = Timer(1.5 * mod, readPressure, ())
-        timer_pt.start()
-    '''
 
     mutex.acquire(blocking=False)
     if mutex.locked():
-        if (adjusted_temp <= freeze_risk_threshold) and (pump_on is False):
-            startPump()
-            lastEvent = "freeze risk"
-            lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
-            updateLog()
+        if (adjusted_temp <= freeze_protection_threshold): # Risking freeze conditions!
+            if (current_pump_state is PumpState.OFF) and (freeze_protection_cooldown is False): # Pump is not on, and the cooldown period has ended
+                startPump(PumpState.FREEZE_PROTECTION_ON)
+                freeze_protection_cooldown = True
+                Timer(10 * 60, freeze_protection_cooldown_counter, ()).start()
+                lastEvent = "freeze protection on"
+                lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
+                updateLog()
 
         else:
-            desired_pump_state = pump_on
+            desired_pump_state = current_pump_state
             lastEventBuffer = 0
+            source = PumpState.OFF
+
+            if (current_pump_state is PumpState.FREEZE_PROTECTION_ON) and (freeze_protection_cooldown is False): # Pump is on due to freeze protection, and the cooldown poweriod has ended
+                desired_pump_state = 0 # Want to turn the pump off. Schedules can override this.
+                lastEventBuffer = "freeze protection off"
 
             # Check one-time schedule first to give preference to one-time schedules
             # Check off-times first so time-collisions will result in pump state OFF
@@ -283,6 +294,7 @@ def application_tick():
                     lastEventBuffer = "one-time schedule"
                 elif currtime == one_time_on:
                     desired_pump_state = 1
+                    source = PumpState.ONE_TIME_RUN_ON
                     lastEventBuffer = "one-time schedule"
             else:
                 if currtime == sched_off:
@@ -290,14 +302,15 @@ def application_tick():
                     lastEventBuffer = "daily schedule"
                 elif currtime == sched_on:
                     desired_pump_state = 1
+                    source = PumpState.DAILY_SCHED_ON
                     lastEventBuffer = "daily schedule"
-
-            if (desired_pump_state is 1) and (pump_on is False):
-                startPump()
+                    
+            if (desired_pump_state is 1) and (current_pump_state is PumpState.OFF):
+                startPump(source)
                 lastEvent = lastEventBuffer
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                 updateLog()
-            elif (desired_pump_state is 0) and (pump_on is True):
+            elif (desired_pump_state is 0) and (not (current_pump_state is PumpState.OFF)):
                 stopPump()
                 lastEvent = lastEventBuffer
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
@@ -363,7 +376,7 @@ def main():
         'once_off' : ("%02d:%02d" % (int(one_time_off/100), one_time_off - (int(one_time_off/100) * 100))),
         'last' : lastEvent,
         'lastEventTime' : lastEventTime,
-        'pump_state' : ("Pump is currently ON" if pump_on else "Pump is currently OFF")
+        'pump_state' : ("Pump is currently OFF" if (current_pump_state is PumpState.OFF) else "Pump is currently ON")
     }
     # Pass the template data into the template main.html and return it to the user
     return render_template('main.html', **templateData)
@@ -425,7 +438,7 @@ def set_schedule():
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on is True: # Outside new schedule time + pump is on
+                elif not (current_pump_state is PumpState.OFF): # Outside new schedule time + pump is on
                     stopPump()
                     print("NOT currtime >= sch on OR < sched_off -> pump off")
                     lastEvent = "daily schedule"
@@ -438,7 +451,7 @@ def set_schedule():
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on is True: # Outside new schedule time + pump is on
+                elif not (current_pump_state is PumpState.OFF): # Outside new schedule time + pump is on
                     stopPump()
                     print("NOT currtime >= sch on AND < sched_off -> pump off")
                     lastEvent = "daily schedule"
@@ -489,7 +502,7 @@ def set_one_time_run():
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on:
+                elif not (current_pump_state is PumpState.OFF):
                     stopPump()
                     print("Pump was on outside of new one-time schedule. Turning pump off\n")
                     lastEvent = "one-time schedule"
@@ -502,7 +515,7 @@ def set_one_time_run():
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on:
+                elif not (current_pump_state is PumpState.OFF):
                     stopPump()
                     print("Pump was on outside of new one-time schedule. Turning pump off\n")
                     lastEvent = "one-time schedule"
@@ -536,7 +549,7 @@ def appToggle():
         'once_off' : ("%02d:%02d" % (int(one_time_off/100), one_time_off - (int(one_time_off/100) * 100))),
         'last' : lastEvent,
         'lastEventTime' : lastEventTime,
-        'pump_state' : ("Pump is currently ON" if pump_on else "Pump is currently OFF")
+        'pump_state' : ("Pump is currently OFF" if (current_pump_state is PumpState.OFF) else "Pump is currently ON")
     }
     # Pass the template data into the template main.html and return it to the user
     return render_template('toggle.html', **templateData)
@@ -669,7 +682,7 @@ def set_time():
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on is True: # Outside new schedule time + pump is on
+                elif not (current_pump_state is PumpState.OFF): # Outside new schedule time + pump is on
                     stopPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
@@ -680,7 +693,7 @@ def set_time():
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
-                elif pump_on is True: # Outside new schedule time + pump is on
+                elif not (current_pump_state is PumpState.OFF): # Outside new schedule time + pump is on
                     stopPump()
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
@@ -745,6 +758,8 @@ if __name__ == "__main__":
     bus.write_byte_data(temp_sensor_addr, 0x01, 0x40) # Set temp res to 11 bits (0.125 deg C)
     if not (bus.read_byte(temp_sensor_addr) == 0x40):
         temp_sensor_failure = True
+        sensed_temp = "Temp Sensor Failure!"
+        estimated_temp = "Temp Sensor Failure!"
         print("Failed to set or read temp sensor config register!")
     else:
         print("Temp sensor set to 11 bit resolution!")
