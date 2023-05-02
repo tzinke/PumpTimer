@@ -33,7 +33,7 @@ Change Log
 # # Imports
 ##################################################################################################
 
-import os
+import glob, os
 import time
 import smbus
 import datetime
@@ -73,7 +73,7 @@ pump_one_time_run = False
 lastEvent = "None" # Possible values: "button", "daily schedule", "one-time schedule", "pressure failure"
 lastEventTime = 0
 general_cooldown = 0 # This is to prevent overly-frequent pump-state changes. Each change will incur a 3s general_cooldown
-freeze_protection_cooldown = 0 # This is to prevent overly-frequent pump-state changes. If the freeze-protection changes pump state, it will stay so for at least 10 minutes
+freeze_protection_cooldown = False # This is to prevent overly-frequent pump-state changes. If the freeze-protection changes pump state, it will stay so for at least 10 minutes
 mutex = Lock() # This is to prevent unwanted interactions between timer and button events
 sensor_temp = 0
 temp_offset = 0
@@ -198,16 +198,17 @@ def temp_get():
 def updateLog():
     with open(log_path, 'a') as log:
         log.write("%s turned pump %s at %s\n" % (lastEvent, ("OFF" if (current_pump_state is PumpState.OFF) else "ON"), lastEventTime))
-        log.write("Sensed temp: %5.1f\tAdjusted temp: %5.1f\n" % (sensed_temp, adjusted_temp))
+        log.write("Sensed temp: %5.1f\tAdjusted temp: %5.1f\n" % (sensor_temp, adjusted_temp))
 
 def startPump(source):
-    global current_pump_state, general
+    global current_pump_state, general_cooldown
     if general_cooldown is 0:
         # GPIO18 high for 15ms
         GPIO.output(18, 1)
         time.sleep(0.015)
         GPIO.output(18, 0)
         current_pump_state = source
+        print("Pump started by %s" % source.name)
 
         GPIO.output(15,1)
         general_cooldown = 1
@@ -250,7 +251,7 @@ def freeze_protection_cooldown_counter():
     freeze_protection_cooldown = False
 
 def application_tick():
-    global mutex, sensors, lastEvent, lastEventTime, currtime, sensor_temp, adjusted_temp, one_time_on, one_time_off, one_time_run_pending, current_day, log_path
+    global mutex, sensors, lastEvent, lastEventTime, currtime, sensor_temp, adjusted_temp, one_time_on, one_time_off, one_time_run_pending, current_day, log_path, freeze_protection_cooldown
     # Check if the current time matches sched_on, sched_off, one_time_on, or one_time_off
     #   and change pump state if necessary
     sensors[0] = rtc_get()
@@ -267,7 +268,9 @@ def application_tick():
     mutex.acquire(blocking=False)
     if mutex.locked():
         if (adjusted_temp <= freeze_protection_threshold): # Risking freeze conditions!
+            print("Freeze condition detected! PumpState is %s, freeze prot cooldown is %d" % (current_pump_state.name, freeze_protection_cooldown))
             if (current_pump_state is PumpState.OFF) and (freeze_protection_cooldown is False): # Pump is not on, and the cooldown period has ended
+                print("In freeze protect block")
                 startPump(PumpState.FREEZE_PROTECTION_ON)
                 freeze_protection_cooldown = True
                 Timer(10 * 60, freeze_protection_cooldown_counter, ()).start()
@@ -332,13 +335,25 @@ def application_tick():
             newlogrec.write(log_path)
 
         try:
-            # Delete log from 3 months ago  to remove clutter (who needs such an old log?)
+            # Delete log from 3 months ago to remove clutter (who needs such an old log?)
             month = int(sensors[0][4])
             if month < 4:
-                os.remove("%s%s_%d*" % (log_dir, sensors[0][3], 9 + month))
+                for f in glob.glob("%s%s_%02d*" % (log_dir, sensors[0][3], 9 + month)):
+                    print("Attempting to remove log %s" % f)
+                    os.remove(f)
+                #log_name = '%s_%02d*' % (sensors[0][3], 9 + month)
+                #path = os.path.join(log_dir, log_name)
+                #os.remove(path)
             else:
-                os.remove("%s%s_%d*" % (log_dir, sensors[0][3], month - 3))
+                for f in glob.glob("%s%s_%02d*" % (log_dir, sensors[0][3], month - 3)):
+                    print("Attempting to remove log %s" % f)
+                    os.remove(f)
+                #log_name = "%s_%02d*" % (sensors[0][3], month - 3)
+                #path = os.path.join(log_dir, log_name)
+                #print("Attempting to remove log %s" % path)
+                #os.remove(path)
         except OSError: # Such log doesn't exist
+            print("Failed to remove log!")
             pass
 
 @app.route("/")
@@ -433,7 +448,7 @@ def set_schedule():
         if (one_time_run_pending is 0):
             if sched_off < sched_on: # Wrap through midnight
                 if (currtime >= sched_on) or (currtime < sched_off):
-                    startPump()
+                    startPump(PumpState.DAILY_SCHED_ON)
                     print("Currtime >= sch on OR < sched_off -> pump on")
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
@@ -446,7 +461,7 @@ def set_schedule():
                     updateLog()
             elif sched_off > sched_on:
                 if (currtime >= sched_on) and (currtime < sched_off):
-                    startPump()
+                    startPump(PumpState.DAILY_SCHED_ON)
                     print("Currtime >= sch on AND < sched_off -> pump on")
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
@@ -497,7 +512,7 @@ def set_one_time_run():
             one_time_run_pending = 1
             if one_time_off < one_time_on: # Wrap through midnight
                 if (currtime >= one_time_on) or (currtime < one_time_off):
-                    startPump()
+                    startPump(PumpState.ON_TIME_RUN_ON)
                     print("One-time schedule includes current time. Turning pump on\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
@@ -510,7 +525,7 @@ def set_one_time_run():
                     updateLog()
             elif one_time_off > one_time_on:
                 if (currtime >= one_time_on) and (currtime < one_time_off):
-                    startPump()
+                    startPump(PumpState.ONE_TIME_RUN_ON)
                     print("One-time schedule includes current time. Turning pump on\n")
                     lastEvent = "one-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
@@ -678,7 +693,7 @@ def set_time():
         if (one_time_run_pending is 0):
             if sched_off < sched_on: # Wrap through midnight
                 if (currtime >= sched_on) or (currtime < sched_off):
-                    startPump()
+                    startPump(PumpState.DAILY_SCHED_ON)
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
@@ -689,7 +704,7 @@ def set_time():
                     updateLog()
             elif sched_off > sched_on:
                 if (currtime >= sched_on) and (currtime < sched_off):
-                    startPump()
+                    startPump(PumpState.DAILY_SCHED_ON)
                     lastEvent = "daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
@@ -758,7 +773,7 @@ if __name__ == "__main__":
     bus.write_byte_data(temp_sensor_addr, 0x01, 0x40) # Set temp res to 11 bits (0.125 deg C)
     if not (bus.read_byte(temp_sensor_addr) == 0x40):
         temp_sensor_failure = True
-        sensed_temp = "Temp Sensor Failure!"
+        sensor_temp = "Temp Sensor Failure!"
         estimated_temp = "Temp Sensor Failure!"
         print("Failed to set or read temp sensor config register!")
     else:
@@ -795,14 +810,14 @@ if __name__ == "__main__":
 
     if sched_off < sched_on: # Wrap through midnight
         if (currtime >= sched_on) or (currtime < sched_off):
-            startPump()
+            startPump(PumpState.DAILY_SCHED_ON)
             print("Currtime >= sch on OR < sched_off -> pump on")
             lastEvent = "daily schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
             updateLog()
     elif sched_off > sched_on:
         if (currtime >= sched_on) and (currtime < sched_off):
-            startPump()
+            startPump(PumpState.DAILY_SCHED_ON)
             print("Currtime >= sch on AND < sched_off -> pump on")
             lastEvent = "daily schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
