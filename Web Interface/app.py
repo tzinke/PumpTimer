@@ -421,7 +421,8 @@ def set_schedule():
             with open(initialization_data_path, "w") as file:
                 file.write("%d\n" % sched_on)
                 file.write("%d\n" % old_off)
-                file.write("%5.1" % temp_offset)
+                file.write("%5.1f\n" % temp_offset)
+                file.write("%7.1f" % freeze_protection_threshold)
 
         off_time = request.form['new_off']
 
@@ -443,7 +444,8 @@ def set_schedule():
             with open(initialization_data_path, "w") as file:
                 file.write("%d\n" % old_on)
                 file.write("%d\n" % sched_off)
-                file.write("%5.1f" % temp_offset)
+                file.write("%5.1f\n" % temp_offset)
+                file.write("%7.1f" % freeze_protection_threshold)
 
         if (one_time_run_pending is 0):
             if sched_off < sched_on: # Wrap through midnight
@@ -724,6 +726,42 @@ def set_time():
     }
 
     return render_template('setTime.html', **templateData)
+    
+@app.route("/tempSensorSettings", methods=['GET', 'POST'])
+def set_temp_sensor_settings():
+    global temp_offset, freeze_protection_threshold
+    if request.method == 'POST':
+        new_offset = request.form['newOffset']
+
+        if not (new_offset == ''):
+            try:
+                temp_var = float(new_offset)
+                temp_offset = temp_var
+            except:
+                pass
+
+        new_threshold = request.form['newThreshold']
+
+        if not (new_threshold == ''):
+            try:
+                temp_var = float(new_threshold)
+                freeze_protection_threshold = temp_var
+            except:
+                pass
+                
+        
+        with open(initialization_data_path, "w") as file:
+            file.write("%d\n" % sched_on)
+            file.write("%d\n" % sched_off)
+            file.write("%5.1f\n" % temp_offset)
+            file.write("%7.1f" % freeze_protection_threshold)
+
+    templateData = {
+        'offset' : ("%5.1f" % temp_offset),
+        'threshold' : ("%7.1f" % freeze_protection_threshold)
+    }
+
+    return render_template('tempSensorSettings.html', **templateData)
 
 @app.after_request
 def add_header(r):
@@ -805,6 +843,7 @@ if __name__ == "__main__":
         sched_on = int(file.readline())
         sched_off = int(file.readline())
         temp_offset = float(file.readline())
+        freeze_protection_threshold = float(file.readline())
     
     print("Daily on: %d\nDaily off: %d\nTemp offset: %5.1f" % (sched_on, sched_off, temp_offset))
 

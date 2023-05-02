@@ -1,0 +1,46 @@
+<DOCTYPE html>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<head>
+   <title>Pool Pump Interface</title>
+   <link rel="stylesheet" href="{{ url_for("static", filename="styles.css") }}" />
+</head>
+<html>
+<body>
+    <h1 align='center'>Pool Pump Interface</h1>
+	<h2 align='center'>Set temperature sensor settings</h2>
+
+	<div class="container" align='center' width="100%">
+        <div>The system turns the pump on once the temperature is at or below the set threshold in order to protect
+		the equipment and plumbing against freezes. The sensed temperature can be pretty inaccurate depending on conditions
+		(it is more inaccurate in sunny, hot conditions), so this page lets you set a correction factor. It is best to set
+		this adjustment after observing the inaccuracy during freezing or close-to-freezing weather.
+		</div>
+		<br>
+        <div><b>Current temperature correction factor:</b></div>
+        <div id="offset">{{ offset }}</div>
+		
+        <div><b>Current freeze-protection threshold:</b></div>
+        <div id="threshold">{{ threshold }}</div>
+
+        <br>
+        <div><b>Enter the new settings in Fahrenheit (include sign). You can leave a box blank to keep the current setting.</b></div>
+        <form action="{{ url_for('set_temp_sensor_settings') }}" method="post">
+            <div>
+                <label for="newOffset">New correction factor:</label>
+                <input type="text" id="newOffset" name="newOffset" size="17">
+            </div>
+            <br>
+            <div>
+                <label for="newThreshold">New freeze-protection threshold:</label>
+                <input type="text" id="newThreshold" name="newThreshold" size="17">
+            </div>
+            <br><br>
+            <input type="submit" value="Save" class="submitbutton">
+        </form>
+        <form action="{{ url_for('main') }}">
+            <input type="submit" value="Return (don't save)"  class="returnbutton">
+        </form>
+    </div>
+
+</body>
+</html>
