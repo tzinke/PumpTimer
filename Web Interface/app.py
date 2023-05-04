@@ -65,9 +65,10 @@ current_day = 0
 class PumpState(Enum):
     DAILY_SCHED_ON = 1
     ONE_TIME_RUN_ON = 2
-    BUTTON_ON = 3
-    FREEZE_PROTECTION_ON = 4
-    OFF = 5
+    WEB_TOGGLE_ON = 3
+    BUTTON_ON = 4
+    FREEZE_PROTECTION_ON = 5
+    OFF = 6
 current_pump_state = PumpState.OFF
 pump_one_time_run = False
 lastEvent = "None" # Possible values: "button", "daily schedule", "one-time schedule", "pressure failure"
@@ -198,7 +199,7 @@ def temp_get():
 def updateLog():
     with open(log_path, 'a') as log:
         log.write("%s turned pump %s at %s\n" % (lastEvent, ("OFF" if (current_pump_state is PumpState.OFF) else "ON"), lastEventTime))
-        log.write("Sensed temp: %5.1f\tAdjusted temp: %5.1f\n" % (sensor_temp, adjusted_temp))
+        log.write("Sensed temp: %7.1f\t, Adjusted temp: %7.1f\n" % (sensor_temp, adjusted_temp))
 
 def startPump(source):
     global current_pump_state, general_cooldown
@@ -237,7 +238,7 @@ def toggle_pump(button):
         stopPump()
 
     mutex.release()
-    lastEvent = "button"
+    lastEvent = "Button"
     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
     updateLog()
 
@@ -261,6 +262,7 @@ def application_tick():
         sensors[1] = temp_get()
         sensor_temp = (sensors[1] * 1.8) + 32.0 
         adjusted_temp = sensor_temp + temp_offset
+        print("%7.1f + %7.1f = %7.1f" % (sensor_temp, temp_offset, adjusted_temp))
 
     drift_correction = 60 - int(sensors[0][0]) #Subtract out the seconds from timer delay so this happens on the minute
     print("Drift correction: %d" % drift_correction)
@@ -274,7 +276,7 @@ def application_tick():
                 startPump(PumpState.FREEZE_PROTECTION_ON)
                 freeze_protection_cooldown = True
                 Timer(10 * 60, freeze_protection_cooldown_counter, ()).start()
-                lastEvent = "freeze protection on"
+                lastEvent = "Freeze protection on"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                 updateLog()
 
@@ -285,7 +287,7 @@ def application_tick():
 
             if (current_pump_state is PumpState.FREEZE_PROTECTION_ON) and (freeze_protection_cooldown is False): # Pump is on due to freeze protection, and the cooldown poweriod has ended
                 desired_pump_state = 0 # Want to turn the pump off. Schedules can override this.
-                lastEventBuffer = "freeze protection off"
+                lastEventBuffer = "Freeze protection off"
 
             # Check one-time schedule first to give preference to one-time schedules
             # Check off-times first so time-collisions will result in pump state OFF
@@ -294,19 +296,19 @@ def application_tick():
                     desired_pump_state = 0
                     one_time_run_pending = 0 # one-time-run schedule finished
                     one_time_on = one_time_off = 0
-                    lastEventBuffer = "one-time schedule"
+                    lastEventBuffer = "One-time schedule"
                 elif currtime == one_time_on:
                     desired_pump_state = 1
                     source = PumpState.ONE_TIME_RUN_ON
-                    lastEventBuffer = "one-time schedule"
+                    lastEventBuffer = "One-time schedule"
             else:
                 if currtime == sched_off:
                     desired_pump_state = 0
-                    lastEventBuffer = "daily schedule"
+                    lastEventBuffer = "Daily schedule"
                 elif currtime == sched_on:
                     desired_pump_state = 1
                     source = PumpState.DAILY_SCHED_ON
-                    lastEventBuffer = "daily schedule"
+                    lastEventBuffer = "Daily schedule"
                     
             if (desired_pump_state is 1) and (current_pump_state is PumpState.OFF):
                 startPump(source)
@@ -341,17 +343,10 @@ def application_tick():
                 for f in glob.glob("%s%s_%02d*" % (log_dir, sensors[0][3], 9 + month)):
                     print("Attempting to remove log %s" % f)
                     os.remove(f)
-                #log_name = '%s_%02d*' % (sensors[0][3], 9 + month)
-                #path = os.path.join(log_dir, log_name)
-                #os.remove(path)
             else:
                 for f in glob.glob("%s%s_%02d*" % (log_dir, sensors[0][3], month - 3)):
                     print("Attempting to remove log %s" % f)
                     os.remove(f)
-                #log_name = "%s_%02d*" % (sensors[0][3], month - 3)
-                #path = os.path.join(log_dir, log_name)
-                #print("Attempting to remove log %s" % path)
-                #os.remove(path)
         except OSError: # Such log doesn't exist
             print("Failed to remove log!")
             pass
@@ -452,30 +447,30 @@ def set_schedule():
                 if (currtime >= sched_on) or (currtime < sched_off):
                     startPump(PumpState.DAILY_SCHED_ON)
                     print("Currtime >= sch on OR < sched_off -> pump on")
-                    lastEvent = "daily schedule"
+                    lastEvent = "Daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
                 elif not (current_pump_state is PumpState.OFF): # Outside new schedule time + pump is on
                     stopPump()
                     print("NOT currtime >= sch on OR < sched_off -> pump off")
-                    lastEvent = "daily schedule"
+                    lastEvent = "Daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
             elif sched_off > sched_on:
                 if (currtime >= sched_on) and (currtime < sched_off):
                     startPump(PumpState.DAILY_SCHED_ON)
                     print("Currtime >= sch on AND < sched_off -> pump on")
-                    lastEvent = "daily schedule"
+                    lastEvent = "Daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
                 elif not (current_pump_state is PumpState.OFF): # Outside new schedule time + pump is on
                     stopPump()
                     print("NOT currtime >= sch on AND < sched_off -> pump off")
-                    lastEvent = "daily schedule"
+                    lastEvent = "Daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
             else: # sched_off is the same as sched_on
-                lastEvent = "daily schedule"
+                lastEvent = "Daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                 stopPump()
                 updateLog()
@@ -516,26 +511,26 @@ def set_one_time_run():
                 if (currtime >= one_time_on) or (currtime < one_time_off):
                     startPump(PumpState.ON_TIME_RUN_ON)
                     print("One-time schedule includes current time. Turning pump on\n")
-                    lastEvent = "one-time schedule"
+                    lastEvent = "One-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
                 elif not (current_pump_state is PumpState.OFF):
                     stopPump()
                     print("Pump was on outside of new one-time schedule. Turning pump off\n")
-                    lastEvent = "one-time schedule"
+                    lastEvent = "One-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
             elif one_time_off > one_time_on:
                 if (currtime >= one_time_on) and (currtime < one_time_off):
                     startPump(PumpState.ONE_TIME_RUN_ON)
                     print("One-time schedule includes current time. Turning pump on\n")
-                    lastEvent = "one-time schedule"
+                    lastEvent = "One-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
                 elif not (current_pump_state is PumpState.OFF):
                     stopPump()
                     print("Pump was on outside of new one-time schedule. Turning pump off\n")
-                    lastEvent = "one-time schedule"
+                    lastEvent = "One-time schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
             elif one_time_on == one_time_off:
@@ -555,7 +550,12 @@ def set_one_time_run():
 @app.route("/toggle")
 def appToggle():
     global lastEvent
-    toggle_pump(0)
+
+    if (pump_state is PumpState.OFF):
+        startPump(PumpState.WEB_TOGGLE_ON)
+    else:
+        stopPump()
+
     lastEvent = "Toggled via web"
     updateLog()
     templateData = {
@@ -570,36 +570,6 @@ def appToggle():
     }
     # Pass the template data into the template main.html and return it to the user
     return render_template('toggle.html', **templateData)
-
-@app.route("/downloadLog")
-def download():
-    """
-    Description
-    -----------
-    This function gets called when the client navigates to "[serveraddress]/transfer"
-
-    This function sends the log file for download to the client computer.
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    Causes the log file to be sent to the client computer
-
-    Examples
-    --------
-
-    Change Log
-    ----------
-
-    Notes
-    -----
-    """
-    path = "PathToLog" % datetime.datetime.now() # TODO
-
-    return send_file(path, as_attachment=True)
 
 @app.route("/logs", methods=['GET', 'POST'])
 def logs():
@@ -624,31 +594,34 @@ def logs():
     Notes
     -----
     """
-    global options, filename
-
+    print("In get area for logs")
     available_logs = []
-    for f in os.listdir("logs"):
-        if f.endswith(".txt"):
-            available_logs.append(f)
+    for f in glob.glob("%s*" % log_dir):
+        log_name = f.split('/')[3]
+        #as_select_option = "<option value=\"%s\">%s</option>" % (log_name, log_name)
+        as_select_option = "%s" % log_name
+        print("Adding %s to list" % as_select_option)
+        available_logs.append(as_select_option)
 
     available_logs.sort(reverse=True)
+    print(available_logs)
     logs = {
         'logs' : available_logs
     }
 
-    # TODO how can I send a log's contents for viewing on the webpage?
-    # Put it in a multi-line string or just redirect the client to the log file on SD card?
-    loginfo = {
-    }
+    log_content = "No log selected"
 
     if request.method == 'POST':
-        requested = request.form['req_log']
+        print("In post area for logs")
+        requested = request.form['log_list']
 
         if not requested == '':
-            # TODO
-            pass
+            requested_log_path = "%s%s" % (log_dir, requested)
+            print(requested_log_path)
+            with open(requested_log_path, "r") as file:
+                log_content = file.read()
 
-    return render_template('logs.html', **(logs), **loginfo)
+    return render_template('logs.html', **(logs), log_content=log_content)
 
 @app.route("/setTime", methods=['GET', 'POST'])
 def set_time():
@@ -696,27 +669,27 @@ def set_time():
             if sched_off < sched_on: # Wrap through midnight
                 if (currtime >= sched_on) or (currtime < sched_off):
                     startPump(PumpState.DAILY_SCHED_ON)
-                    lastEvent = "daily schedule"
+                    lastEvent = "Daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
                 elif not (current_pump_state is PumpState.OFF): # Outside new schedule time + pump is on
                     stopPump()
-                    lastEvent = "daily schedule"
+                    lastEvent = "Daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
             elif sched_off > sched_on:
                 if (currtime >= sched_on) and (currtime < sched_off):
                     startPump(PumpState.DAILY_SCHED_ON)
-                    lastEvent = "daily schedule"
+                    lastEvent = "Daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
                 elif not (current_pump_state is PumpState.OFF): # Outside new schedule time + pump is on
                     stopPump()
-                    lastEvent = "daily schedule"
+                    lastEvent = "Daily schedule"
                     lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                     updateLog()
             else: # sched_off is the same as sched_on
-                lastEvent = "daily schedule"
+                lastEvent = "Daily schedule"
                 lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
                 stopPump()
                 updateLog()
@@ -851,14 +824,14 @@ if __name__ == "__main__":
         if (currtime >= sched_on) or (currtime < sched_off):
             startPump(PumpState.DAILY_SCHED_ON)
             print("Currtime >= sch on OR < sched_off -> pump on")
-            lastEvent = "daily schedule"
+            lastEvent = "Daily schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
             updateLog()
     elif sched_off > sched_on:
         if (currtime >= sched_on) and (currtime < sched_off):
             startPump(PumpState.DAILY_SCHED_ON)
             print("Currtime >= sch on AND < sched_off -> pump on")
-            lastEvent = "daily schedule"
+            lastEvent = "Daily schedule"
             lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
             updateLog()
 
