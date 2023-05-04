@@ -60,8 +60,6 @@ log_dir = "./static/logs/"
 log_recovery = "./static/logRecovery"
 log_path = '' # Will get set to current date
 current_day = 0
-
-# State variables
 class PumpState(Enum):
     DAILY_SCHED_ON = 1
     ONE_TIME_RUN_ON = 2
@@ -69,6 +67,21 @@ class PumpState(Enum):
     BUTTON_ON = 4
     FREEZE_PROTECTION_ON = 5
     OFF = 6
+class MonthNames(Enum):
+    Jan = 1
+    Feb = 2
+    Mar = 3
+    Apr = 4
+    May = 5
+    June = 6
+    July = 7
+    Aug = 8
+    Sep = 9
+    Oct = 10
+    Nov = 11
+    Dec = 12
+
+# State variables
 current_pump_state = PumpState.OFF
 pump_one_time_run = False
 lastEvent = "None" # Possible values: "button", "daily schedule", "one-time schedule", "pressure failure"
@@ -377,7 +390,7 @@ def main():
     -----
     """
     templateData = {
-        'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5])),
+        'curr_time' : ("%s:%s %s %s 20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], MonthNames(int(sensors[0][4])).name, sensors[0][5])),
         'sensed_temp' : ("%4.1f" % sensor_temp),
         'estimated_temp' : ("%4.1f" % adjusted_temp),
         'sched_on' : ("%02d:%02d" % (int(sched_on/100), sched_on - (int(sched_on/100) * 100))),
@@ -476,7 +489,7 @@ def set_schedule():
                 updateLog()
 
     templateData = {
-        'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5])),
+        'curr_time' : ("%s:%s %s %s 20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], MonthNames(int(sensors[0][4])).name, sensors[0][5])),
         'curr_on' : ("%02d:%02d" % (int(sched_on/100), sched_on - (int(sched_on/100) * 100))),
         'curr_off' : ("%02d:%02d" % (int(sched_off/100), sched_off - (int(sched_off/100) * 100)))
     }
@@ -542,7 +555,7 @@ def set_one_time_run():
     templateData = {
         'curr_on' : ("%02d:%02d" % (int(one_time_on/100), one_time_on - (int(one_time_on/100) * 100))),
         'curr_off' : ("%02d:%02d" % (int(one_time_off/100), one_time_off - (int(one_time_off/100) * 100))),
-        'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5]))
+        'curr_time' : ("%s:%s %s %s 20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], MonthNames(int(sensors[0][4])).name, sensors[0][5])),
     }
 
     return render_template('setOneTime.html', **templateData)
@@ -559,7 +572,7 @@ def appToggle():
     lastEvent = "Toggled via web"
     updateLog()
     templateData = {
-        'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5])),
+        'curr_time' : ("%s:%s %s %s 20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], MonthNames(int(sensors[0][4])).name, sensors[0][5])),
         'sched_on' : ("%02d:%02d" % (int(sched_on/100), sched_on - (int(sched_on/100) * 100))),
         'sched_off' : ("%02d:%02d" % (int(sched_off/100), sched_off - (int(sched_off/100) * 100))),
         'once_on' : ("%02d:%02d" % (int(one_time_on/100), one_time_on - (int(one_time_on/100) * 100))),
@@ -695,7 +708,7 @@ def set_time():
                 updateLog()
 
     templateData = {
-        'curr_time' : ("%s:%s %s/%s/20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], sensors[0][4], sensors[0][5]))
+        'curr_time' : ("%s:%s %s %s 20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], MonthNames(int(sensors[0][4])).name, sensors[0][5])),
     }
 
     return render_template('setTime.html', **templateData)
