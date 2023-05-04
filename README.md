@@ -10,6 +10,8 @@
 
 <p>Once connected, open a browser and navigate to pumpcontroller.com. This will pull up the controller interface.</p>
 
+![alt text](https://github.com/tzinke/PumpTimer/blob/master/images/Screenshot_20230504-101858.png?raw=true)
+
 <p>Here, you can set a schedule to turn the pump on/off at the same time each day, set the on-board clock, set a "one-time run" (a schedule that will only execute a single time, after which the daily schedule will resume), toggle the pump on/off manually, and view logs from the last 3 months.
 The on-board clock is very accurate with little drift, but it is not configured to automatically adjust for daylight savings.</p>
 
