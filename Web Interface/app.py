@@ -562,14 +562,15 @@ def set_one_time_run():
 
 @app.route("/toggle")
 def appToggle():
-    global lastEvent
+    global lastEvent, lastEventTime  
 
-    if (pump_state is PumpState.OFF):
+    if (current_pump_state is PumpState.OFF):
         startPump(PumpState.WEB_TOGGLE_ON)
     else:
         stopPump()
 
     lastEvent = "Toggled via web"
+    lastEventTime = "%s:%s" % (sensors[0][2], sensors[0][1])
     updateLog()
     templateData = {
         'curr_time' : ("%s:%s %s %s 20%s" %  (sensors[0][2], sensors[0][1], sensors[0][3], MonthNames(int(sensors[0][4])).name, sensors[0][5])),
